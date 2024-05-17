@@ -1,22 +1,39 @@
 package main
 
 import (
-	"io"
+	"flag"
+	"log"
 	"net/http"
+	"os"
+	"time"
+
+	"github.com/fdemchenko/exchanger/internal/services"
 )
 
-func getRate(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Exchange rate")
+type config struct {
+	addr string
 }
 
-func subscribe(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Subscibed")
+type application struct {
+	cfg               config
+	rateService       *services.RateService
+	errorLog, infoLog *log.Logger
 }
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /rate", getRate)
-	mux.HandleFunc("POST /subscribe", subscribe)
+	var cfg config
+	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
+	flag.Parse()
 
-	http.ListenAndServe(":8080", mux)
+	infoLog := log.New(os.Stdout, "INFO ", log.Ldate|log.Lshortfile)
+	errorLog := log.New(os.Stderr, "ERROR ", log.Ldate|log.Lshortfile)
+	app := application{
+		cfg:         cfg,
+		rateService: services.NewRateService(time.Hour),
+		errorLog:    errorLog,
+		infoLog:     infoLog,
+	}
+
+	infoLog.Println("Starting web server at " + app.cfg.addr)
+	log.Fatalln(http.ListenAndServe(app.cfg.addr, app.routes()))
 }
