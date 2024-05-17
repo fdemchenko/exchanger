@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
+
+	"github.com/fdemchenko/exchanger/models"
 )
 
 func (app *application) routes() http.Handler {
@@ -25,5 +27,24 @@ func (app *application) getRate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
-	io.WriteString(w, "Subscibed")
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	newEmail := r.PostForm.Get("email")
+	if !isCorrectEmail(newEmail) {
+		app.clientError(w, http.StatusUnprocessableEntity)
+		return
+	}
+
+	err = app.emailModel.Insert(newEmail)
+	if err != nil {
+		if errors.Is(err, models.ErrDuplicateEmail) {
+			app.clientError(w, http.StatusConflict)
+			return
+		}
+		app.serverError(w, err)
+	}
 }
