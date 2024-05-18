@@ -8,8 +8,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/fdemchenko/exchanger/internal/models"
 	"github.com/fdemchenko/exchanger/internal/services"
-	"github.com/fdemchenko/exchanger/models"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 )
 

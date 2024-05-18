@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/fdemchenko/exchanger/models"
+	"github.com/fdemchenko/exchanger/internal/models"
 )
 
 func (app *application) routes() http.Handler {
