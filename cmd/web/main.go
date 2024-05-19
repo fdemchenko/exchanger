@@ -22,6 +22,7 @@ type config struct {
 		dsn            string
 		maxConnections int
 	}
+	smtp services.MailerConfig
 }
 
 type application struct {
@@ -36,6 +37,12 @@ func main() {
 	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", 25, "Database max connection")
+
+	flag.StringVar(&cfg.smtp.Host, "smtp-host", os.Getenv("EXCHANGER_SMPT_HOST"), "Smpt host")
+	flag.IntVar(&cfg.smtp.Port, "smtp-port", 25, "Smpt port")
+	flag.StringVar(&cfg.smtp.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
+	flag.StringVar(&cfg.smtp.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
+	flag.StringVar(&cfg.smtp.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, "INFO ", log.Ldate|log.Lshortfile)
@@ -43,16 +50,34 @@ func main() {
 
 	db, err := openDB(cfg)
 	if err != nil {
-		errorLog.Fatalln(err.Error())
+		errorLog.Fatalln(err)
 	}
 	infoLog.Println("Coonected to DB successfuly")
 
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		errorLog.Fatalln(err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"postgres", driver)
+	if err != nil {
+		errorLog.Fatalln(err)
+	}
+	m.Up()
+
+	emailModel := &models.EmailModel{DB: db}
+	rateService := services.NewRateService(time.Hour)
+
+	mailerService := services.NewMailerService(cfg.smtp, emailModel, rateService, errorLog)
+	mailerService.StartBackgroundTask(time.Hour * 24)
+
 	app := application{
 		cfg:         cfg,
-		rateService: services.NewRateService(time.Hour),
+		rateService: rateService,
 		errorLog:    errorLog,
 		infoLog:     infoLog,
-		emailModel:  &models.EmailModel{DB: db},
+		emailModel:  emailModel,
 	}
 
 	infoLog.Println("Starting web server at " + app.cfg.addr)
