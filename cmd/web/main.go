@@ -48,6 +48,7 @@ func main() {
 	flag.Func("update-interval", "email update interval", func(s string) error {
 		if s == "" {
 			cfg.updateInterval = time.Hour * 24
+			return nil
 		}
 		duration, err := time.ParseDuration(s)
 		if err != nil {
