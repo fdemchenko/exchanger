@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const RATES_API_BASE_URL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies"
+const RatesAPIBaseURL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies"
 
 type Rate struct {
 	Rates struct {
@@ -65,7 +65,7 @@ func (rs *RateService) GetRate() (*Rate, error) {
 }
 
 func (rs *RateService) fetchExchangeRate() (*Rate, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/usd.json", RATES_API_BASE_URL))
+	resp, err := http.Get(fmt.Sprintf("%s/usd.json", RatesAPIBaseURL))
 	if err != nil {
 		return nil, err
 	}
