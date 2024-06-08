@@ -17,7 +17,7 @@ func (app *application) routes() http.Handler {
 	return app.RecoveryMiddleware(app.LoggingMiddleware(mux))
 }
 
-func (app *application) getRate(w http.ResponseWriter, r *http.Request) {
+func (app *application) getRate(w http.ResponseWriter, _ *http.Request) {
 	rate, err := app.rateService.GetRate()
 	if err != nil {
 		app.serverError(w, err)
