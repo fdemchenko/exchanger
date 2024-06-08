@@ -1,0 +1,16 @@
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - dupl
+    - cyclop
+    - ireturn
+    - revive
+    - nilnil
+    - nilerr
