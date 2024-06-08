@@ -84,8 +84,15 @@ func main() {
 		emailModel:  emailModel,
 	}
 
+	server := http.Server{
+		Handler:           app.routes(),
+		Addr:              app.cfg.addr,
+		WriteTimeout:      10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
 	infoLog.Println("Starting web server at " + app.cfg.addr)
-	log.Fatalln(http.ListenAndServe(app.cfg.addr, app.routes()))
+	errorLog.Fatalln(server.ListenAndServe())
 }
 
 func openDB(cfg config) (*sql.DB, error) {
