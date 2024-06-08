@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -64,7 +65,10 @@ func main() {
 	if err != nil {
 		errorLog.Fatalln(err)
 	}
-	m.Up()
+	err = m.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		errorLog.Fatalln(err)
+	}
 
 	emailModel := &models.EmailModel{DB: db}
 	rateService := services.NewRateService(time.Hour)
