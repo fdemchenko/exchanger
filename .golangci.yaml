@@ -14,3 +14,18 @@ linters:
     - revive
     - nilnil
     - nilerr
+    - gocyclo
+    - stylecheck
+    - unconvert
+    - gocritic
+    - exportloopref
+    - bodyclose
+    - exhaustive
+    - godox
+    - lll
+    - whitespace
+    - bidichk
+    - usestdlibvars
+    - loggercheck
+    - misspell
+    - perfsprint
