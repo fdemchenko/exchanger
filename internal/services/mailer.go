@@ -29,7 +29,8 @@ type MailerConfig struct {
 	Username, Password, Sender string
 }
 
-func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel, rateService *RateService, errorLog *log.Logger) Mailer {
+func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
+	rateService *RateService, errorLog *log.Logger) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = 5 * time.Second
 	return Mailer{
