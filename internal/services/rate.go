@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -65,7 +64,7 @@ func (rs *RateService) GetRate() (*Rate, error) {
 }
 
 func (rs *RateService) fetchExchangeRate() (*Rate, error) {
-	resp, err := http.Get(fmt.Sprintf("%s/usd.json", RatesAPIBaseURL))
+	resp, err := http.Get(RatesAPIBaseURL + "/usd.json")
 	if err != nil {
 		return nil, err
 	}

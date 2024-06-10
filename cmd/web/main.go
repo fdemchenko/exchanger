@@ -53,7 +53,7 @@ func main() {
 	if err != nil {
 		errorLog.Fatalln(err)
 	}
-	infoLog.Println("Coonected to DB successfuly")
+	infoLog.Println("Coonected to DB successfully")
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
