@@ -6,14 +6,10 @@ import (
 	"text/template"
 	"time"
 
-	_ "embed"
-
 	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
 )
-
-//go:embed "rate_update.tmpl"
-var messageTemplate string
 
 const (
 	DialerTimeout = 5 * time.Second
@@ -77,7 +73,7 @@ func (m Mailer) StartBackgroundTask(interval time.Duration) {
 }
 
 func (m Mailer) prepareMessage(data interface{}) (*mail.Message, error) {
-	tmpl, err := template.New("email").Parse(messageTemplate)
+	tmpl, err := template.New("email").Parse(templates.MessageTemplate)
 	if err != nil {
 		return nil, err
 	}
