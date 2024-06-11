@@ -9,6 +9,11 @@ import (
 
 const RatesAPIBaseURL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies"
 
+const (
+	RetryInterval = 500 * time.Millisecond
+	RetryCount    = 3
+)
+
 type Rate struct {
 	Rates struct {
 		UAH float32 `json:"uah"`
@@ -28,10 +33,9 @@ func NewRateService(updateInterval time.Duration) *RateService {
 
 	// initial data fetch
 	rateService.currentRate, rateService.fetchError = rateService.fetchExchangeRate()
-	retriesCount := 3
 	go func() {
 		for range time.Tick(updateInterval) {
-			for i := 0; i < retriesCount; i++ {
+			for i := 0; i < RetryCount; i++ {
 				rate, err := rateService.fetchExchangeRate()
 				if err == nil {
 					rateService.mutex.Lock()
@@ -40,13 +44,13 @@ func NewRateService(updateInterval time.Duration) *RateService {
 					rateService.mutex.Unlock()
 					break
 				}
-				if i == retriesCount-1 {
+				if i == RetryCount-1 {
 					// Give up
 					rateService.mutex.Lock()
 					rateService.fetchError = err
 					rateService.mutex.Unlock()
 				}
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(RetryInterval)
 			}
 		}
 	}()

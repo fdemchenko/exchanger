@@ -15,6 +15,10 @@ import (
 //go:embed "rate_update.tmpl"
 var messageTemplate string
 
+const (
+	DialerTimeout = 5 * time.Second
+)
+
 type Mailer struct {
 	dialer      *mail.Dialer
 	sender      string
@@ -32,7 +36,7 @@ type MailerConfig struct {
 func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
 	rateService *RateService, errorLog *log.Logger) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
-	dialer.Timeout = 5 * time.Second
+	dialer.Timeout = DialerTimeout
 	return Mailer{
 		dialer:      dialer,
 		sender:      cfg.Sender,

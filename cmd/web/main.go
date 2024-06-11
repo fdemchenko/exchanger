@@ -33,14 +33,21 @@ type application struct {
 	emailModel        *models.EmailModel
 }
 
+const (
+	DefaultSMTPPort         = 25
+	ServerTimeout           = 10 * time.Second
+	MailerUpdateInterval    = 24 * time.Hour
+	DefaultMaxDBConnections = 25
+)
+
 func main() {
 	var cfg config
 	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
-	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", 25, "Database max connection")
+	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
 
 	flag.StringVar(&cfg.smtp.Host, "smtp-host", os.Getenv("EXCHANGER_SMPT_HOST"), "Smpt host")
-	flag.IntVar(&cfg.smtp.Port, "smtp-port", 25, "Smpt port")
+	flag.IntVar(&cfg.smtp.Port, "smtp-port", DefaultSMTPPort, "Smpt port")
 	flag.StringVar(&cfg.smtp.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
 	flag.StringVar(&cfg.smtp.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
 	flag.StringVar(&cfg.smtp.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
@@ -74,7 +81,7 @@ func main() {
 	rateService := services.NewRateService(time.Hour)
 
 	mailerService := services.NewMailerService(cfg.smtp, emailModel, rateService, errorLog)
-	mailerService.StartBackgroundTask(time.Hour * 24)
+	mailerService.StartBackgroundTask(MailerUpdateInterval)
 
 	app := application{
 		cfg:         cfg,
@@ -87,8 +94,8 @@ func main() {
 	server := http.Server{
 		Handler:           app.routes(),
 		Addr:              app.cfg.addr,
-		WriteTimeout:      10 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      ServerTimeout,
+		ReadHeaderTimeout: ServerTimeout,
 	}
 
 	infoLog.Println("Starting web server at " + app.cfg.addr)
