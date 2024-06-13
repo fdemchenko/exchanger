@@ -21,7 +21,7 @@ type Rate struct {
 	} `json:"usd"`
 }
 
-var NoFetchOccurredError = errors.New("no fecth occurred yet")
+var ErrNoFetchOccurred = errors.New("no fecth occurred yet")
 
 type RateService struct {
 	currentRate    *Rate
@@ -34,7 +34,7 @@ func NewRateService(updateInterval time.Duration) *RateService {
 	return &RateService{
 		mutex:          sync.RWMutex{},
 		updateInterval: updateInterval,
-		fetchError:     NoFetchOccurredError,
+		fetchError:     ErrNoFetchOccurred,
 	}
 }
 

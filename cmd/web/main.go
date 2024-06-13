@@ -37,6 +37,7 @@ const (
 	DefaultSMTPPort         = 25
 	ServerTimeout           = 10 * time.Second
 	DefaultMaxDBConnections = 25
+	DefaultMailerInterval   = 24 * time.Hour
 )
 
 func main() {
@@ -52,7 +53,7 @@ func main() {
 	flag.StringVar(&cfg.mailer.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
 	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
 		if s == "" {
-			cfg.mailer.UpdateInterval = 24 * time.Hour
+			cfg.mailer.UpdateInterval = DefaultMailerInterval
 			return nil
 		}
 		duration, err := time.ParseDuration(s)
