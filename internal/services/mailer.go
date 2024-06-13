@@ -16,17 +16,19 @@ const (
 )
 
 type Mailer struct {
-	dialer      *mail.Dialer
-	sender      string
-	emailModel  *models.EmailModel
-	rateService *RateService
-	errorLog    *log.Logger
+	dialer         *mail.Dialer
+	sender         string
+	emailModel     *models.EmailModel
+	rateService    *RateService
+	errorLog       *log.Logger
+	updateInterval time.Duration
 }
 
 type MailerConfig struct {
 	Host                       string
 	Port                       int
 	Username, Password, Sender string
+	UpdateInterval             time.Duration
 }
 
 func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
@@ -34,17 +36,18 @@ func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
 	return Mailer{
-		dialer:      dialer,
-		sender:      cfg.Sender,
-		emailModel:  emailModel,
-		rateService: rateService,
-		errorLog:    errorLog,
+		dialer:         dialer,
+		sender:         cfg.Sender,
+		emailModel:     emailModel,
+		rateService:    rateService,
+		errorLog:       errorLog,
+		updateInterval: cfg.UpdateInterval,
 	}
 }
 
-func (m Mailer) StartBackgroundTask(interval time.Duration) {
+func (m Mailer) StartBackgroundTask() {
 	go func() {
-		for range time.Tick(interval) {
+		for range time.Tick(m.updateInterval) {
 			rate, err := m.rateService.GetRate()
 			if err != nil {
 				m.errorLog.Println(err)

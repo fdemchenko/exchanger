@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -20,41 +21,51 @@ type Rate struct {
 	} `json:"usd"`
 }
 
+var NoFetchOccurredError = errors.New("no fecth occurred yet")
+
 type RateService struct {
-	currentRate *Rate
-	mutex       sync.RWMutex
-	fetchError  error
+	currentRate    *Rate
+	mutex          sync.RWMutex
+	fetchError     error
+	updateInterval time.Duration
+}
+
+func NewRateService(updateInterval time.Duration) *RateService {
+	return &RateService{
+		mutex:          sync.RWMutex{},
+		updateInterval: updateInterval,
+		fetchError:     NoFetchOccurredError,
+	}
 }
 
 // Fetches currency data periodically, period is defined by updateInterval.
 // Makes 3 tries before giving up by default
-func NewRateService(updateInterval time.Duration) *RateService {
-	rateService := &RateService{mutex: sync.RWMutex{}}
-
-	// initial data fetch
-	rateService.currentRate, rateService.fetchError = rateService.fetchExchangeRate()
+func (rs *RateService) StartBackgroundTask() {
+	// initial fetch
+	rs.mutex.Lock()
+	rs.currentRate, rs.fetchError = rs.fetchExchangeRate()
+	rs.mutex.Unlock()
 	go func() {
-		for range time.Tick(updateInterval) {
+		for range time.Tick(rs.updateInterval) {
 			for i := 0; i < RetryCount; i++ {
-				rate, err := rateService.fetchExchangeRate()
+				rate, err := rs.fetchExchangeRate()
 				if err == nil {
-					rateService.mutex.Lock()
-					rateService.currentRate = rate
-					rateService.fetchError = nil
-					rateService.mutex.Unlock()
+					rs.mutex.Lock()
+					rs.currentRate = rate
+					rs.fetchError = nil
+					rs.mutex.Unlock()
 					break
 				}
 				if i == RetryCount-1 {
 					// Give up
-					rateService.mutex.Lock()
-					rateService.fetchError = err
-					rateService.mutex.Unlock()
+					rs.mutex.Lock()
+					rs.fetchError = err
+					rs.mutex.Unlock()
 				}
 				time.Sleep(RetryInterval)
 			}
 		}
 	}()
-	return rateService
 }
 
 func (rs *RateService) GetRate() (*Rate, error) {

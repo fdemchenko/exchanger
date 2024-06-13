@@ -23,7 +23,7 @@ type config struct {
 		dsn            string
 		maxConnections int
 	}
-	smtp services.MailerConfig
+	mailer services.MailerConfig
 }
 
 type application struct {
@@ -36,7 +36,6 @@ type application struct {
 const (
 	DefaultSMTPPort         = 25
 	ServerTimeout           = 10 * time.Second
-	MailerUpdateInterval    = 24 * time.Hour
 	DefaultMaxDBConnections = 25
 )
 
@@ -46,11 +45,23 @@ func main() {
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
 
-	flag.StringVar(&cfg.smtp.Host, "smtp-host", os.Getenv("EXCHANGER_SMPT_HOST"), "Smpt host")
-	flag.IntVar(&cfg.smtp.Port, "smtp-port", DefaultSMTPPort, "Smpt port")
-	flag.StringVar(&cfg.smtp.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
-	flag.StringVar(&cfg.smtp.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
-	flag.StringVar(&cfg.smtp.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
+	flag.StringVar(&cfg.mailer.Host, "smtp-host", os.Getenv("EXCHANGER_SMPT_HOST"), "Smpt host")
+	flag.IntVar(&cfg.mailer.Port, "smtp-port", DefaultSMTPPort, "Smpt port")
+	flag.StringVar(&cfg.mailer.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
+	flag.StringVar(&cfg.mailer.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
+	flag.StringVar(&cfg.mailer.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
+	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
+		if s == "" {
+			cfg.mailer.UpdateInterval = 24 * time.Hour
+			return nil
+		}
+		duration, err := time.ParseDuration(s)
+		if err != nil {
+			return err
+		}
+		cfg.mailer.UpdateInterval = duration
+		return nil
+	})
 	flag.Parse()
 
 	infoLog := log.New(os.Stdout, "INFO ", log.Ldate|log.Lshortfile)
@@ -79,9 +90,10 @@ func main() {
 
 	emailModel := &models.EmailModel{DB: db}
 	rateService := services.NewRateService(time.Hour)
+	rateService.StartBackgroundTask()
 
-	mailerService := services.NewMailerService(cfg.smtp, emailModel, rateService, errorLog)
-	mailerService.StartBackgroundTask(MailerUpdateInterval)
+	mailerService := services.NewMailerService(cfg.mailer, emailModel, rateService, errorLog)
+	mailerService.StartBackgroundTask()
 
 	app := application{
 		cfg:         cfg,
