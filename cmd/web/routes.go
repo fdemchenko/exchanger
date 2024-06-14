@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/internal/validator"
 )
 
 func (app *application) routes() http.Handler {
@@ -34,7 +35,9 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEmail := r.PostForm.Get("email")
-	if !isCorrectEmail(newEmail) {
+	v := validator.New()
+	v.Check(validator.IsValidEmail(newEmail), "email", "invalid email")
+	if !v.IsValid() {
 		app.clientError(w, http.StatusUnprocessableEntity)
 		return
 	}
