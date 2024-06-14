@@ -2,13 +2,13 @@ package services
 
 import (
 	"bytes"
-	"log"
 	"text/template"
 	"time"
 
 	"github.com/fdemchenko/exchanger/internal/models"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -20,7 +20,6 @@ type Mailer struct {
 	sender         string
 	emailModel     *models.EmailModel
 	rateService    *RateService
-	errorLog       *log.Logger
 	updateInterval time.Duration
 }
 
@@ -31,8 +30,7 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
-	rateService *RateService, errorLog *log.Logger) Mailer {
+func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel, rateService *RateService) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
 	return Mailer{
@@ -40,7 +38,6 @@ func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
 		sender:         cfg.Sender,
 		emailModel:     emailModel,
 		rateService:    rateService,
-		errorLog:       errorLog,
 		updateInterval: cfg.UpdateInterval,
 	}
 }
@@ -50,17 +47,17 @@ func (m Mailer) StartBackgroundTask() {
 		for range time.Tick(m.updateInterval) {
 			rate, err := m.rateService.GetRate()
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
 			msg, err := m.prepareMessage(rate)
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
 			emails, err := m.emailModel.GetAll()
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
 
@@ -68,7 +65,7 @@ func (m Mailer) StartBackgroundTask() {
 				msg.SetHeader("To", email)
 				err = m.dialer.DialAndSend(msg)
 				if err != nil {
-					m.errorLog.Println(err)
+					log.Error().Err(err).Send()
 				}
 			}
 		}

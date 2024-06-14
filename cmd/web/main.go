@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -15,6 +14,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type config struct {
@@ -27,10 +28,9 @@ type config struct {
 }
 
 type application struct {
-	cfg               config
-	rateService       *services.RateService
-	errorLog, infoLog *log.Logger
-	emailModel        *models.EmailModel
+	cfg         config
+	rateService *services.RateService
+	emailModel  *models.EmailModel
 }
 
 const (
@@ -65,42 +65,39 @@ func main() {
 	})
 	flag.Parse()
 
-	infoLog := log.New(os.Stdout, "INFO ", log.Ldate|log.Lshortfile)
-	errorLog := log.New(os.Stderr, "ERROR ", log.Ldate|log.Lshortfile)
+	zerolog.TimeFieldFormat = time.RFC3339
 
 	db, err := openDB(cfg)
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
-	infoLog.Println("Coonected to DB successfully")
+	log.Print("Coonected to DB successfully")
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://migrations",
 		"postgres", driver)
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
 	err = m.Up()
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
 
 	emailModel := &models.EmailModel{DB: db}
 	rateService := services.NewRateService(time.Hour)
 	rateService.StartBackgroundTask()
 
-	mailerService := services.NewMailerService(cfg.mailer, emailModel, rateService, errorLog)
+	mailerService := services.NewMailerService(cfg.mailer, emailModel, rateService)
 	mailerService.StartBackgroundTask()
 
 	app := application{
 		cfg:         cfg,
 		rateService: rateService,
-		errorLog:    errorLog,
-		infoLog:     infoLog,
 		emailModel:  emailModel,
 	}
 
@@ -111,8 +108,8 @@ func main() {
 		ReadHeaderTimeout: ServerTimeout,
 	}
 
-	infoLog.Println("Starting web server at " + app.cfg.addr)
-	errorLog.Fatalln(server.ListenAndServe())
+	log.Info().Msg("Starting web server at " + app.cfg.addr)
+	log.Fatal().Err(server.ListenAndServe()).Send()
 }
 
 func openDB(cfg config) (*sql.DB, error) {
