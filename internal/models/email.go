@@ -8,11 +8,11 @@ import (
 	"github.com/lib/pq"
 )
 
-type EmailModel struct {
+type EmailModelPostgres struct {
 	DB *sql.DB
 }
 
-func (em *EmailModel) Insert(email string) error {
+func (em *EmailModelPostgres) Insert(email string) error {
 	stmt := `INSERT INTO emails (email) VALUES ($1)`
 
 	_, err := em.DB.Exec(stmt, email)
@@ -29,7 +29,7 @@ func (em *EmailModel) Insert(email string) error {
 	return nil
 }
 
-func (em *EmailModel) GetAll() ([]string, error) {
+func (em *EmailModelPostgres) GetAll() ([]string, error) {
 	query := `SELECT email FROM emails`
 	var emails []string
 

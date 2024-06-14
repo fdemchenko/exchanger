@@ -39,7 +39,7 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.emailModel.Insert(newEmail)
+	err = app.emailService.Create(newEmail)
 	if err != nil {
 		if errors.Is(err, models.ErrDuplicateEmail) {
 			app.clientError(w, http.StatusConflict)

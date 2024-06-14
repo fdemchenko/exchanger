@@ -28,9 +28,9 @@ type config struct {
 }
 
 type application struct {
-	cfg         config
-	rateService *services.RateService
-	emailModel  *models.EmailModel
+	cfg          config
+	rateService  services.RateService
+	emailService services.EmailService
 }
 
 const (
@@ -88,17 +88,18 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	emailModel := &models.EmailModel{DB: db}
+	emailModel := &models.EmailModelPostgres{DB: db}
+	emailService := services.NewEmailService(emailModel)
 	rateService := services.NewRateService(time.Hour)
 	rateService.StartBackgroundTask()
 
-	mailerService := services.NewMailerService(cfg.mailer, emailModel, rateService)
+	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
 	mailerService.StartBackgroundTask()
 
 	app := application{
-		cfg:         cfg,
-		rateService: rateService,
-		emailModel:  emailModel,
+		cfg:          cfg,
+		rateService:  rateService,
+		emailService: emailService,
 	}
 
 	server := http.Server{

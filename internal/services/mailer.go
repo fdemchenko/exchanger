@@ -5,7 +5,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/fdemchenko/exchanger/internal/models"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
 	"github.com/rs/zerolog/log"
@@ -18,9 +17,18 @@ const (
 type Mailer struct {
 	dialer         *mail.Dialer
 	sender         string
-	emailModel     *models.EmailModel
-	rateService    *RateService
+	emailModel     EmailService
+	rateService    RateService
 	updateInterval time.Duration
+}
+
+type RateService interface {
+	GetRate() (*Rate, error)
+}
+
+type EmailService interface {
+	Create(email string) error
+	GetAll() ([]string, error)
 }
 
 type MailerConfig struct {
@@ -30,7 +38,7 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel, rateService *RateService) Mailer {
+func NewMailerService(cfg MailerConfig, emailModel EmailService, rateService RateService) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
 	return Mailer{
