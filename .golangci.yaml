@@ -1,0 +1,32 @@
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - dupl
+    - cyclop
+    - ireturn
+    - revive
+    - nilnil
+    - nilerr
+    - gocyclo
+    - stylecheck
+    - unconvert
+    - gocritic
+    - exportloopref
+    - bodyclose
+    - exhaustive
+    - godox
+    - lll
+    - whitespace
+    - bidichk
+    - usestdlibvars
+    - loggercheck
+    - misspell
+    - perfsprint
+    - mnd

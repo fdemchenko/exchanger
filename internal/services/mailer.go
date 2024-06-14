@@ -6,44 +6,48 @@ import (
 	"text/template"
 	"time"
 
-	_ "embed"
-
 	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
 )
 
-//go:embed "rate_update.tmpl"
-var messageTemplate string
+const (
+	DialerTimeout = 5 * time.Second
+)
 
 type Mailer struct {
-	dialer      *mail.Dialer
-	sender      string
-	emailModel  *models.EmailModel
-	rateService *RateService
-	errorLog    *log.Logger
+	dialer         *mail.Dialer
+	sender         string
+	emailModel     *models.EmailModel
+	rateService    *RateService
+	errorLog       *log.Logger
+	updateInterval time.Duration
 }
 
 type MailerConfig struct {
 	Host                       string
 	Port                       int
 	Username, Password, Sender string
+	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel, rateService *RateService, errorLog *log.Logger) Mailer {
+func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
+	rateService *RateService, errorLog *log.Logger) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
-	dialer.Timeout = 5 * time.Second
+	dialer.Timeout = DialerTimeout
 	return Mailer{
-		dialer:      dialer,
-		sender:      cfg.Sender,
-		emailModel:  emailModel,
-		rateService: rateService,
-		errorLog:    errorLog,
+		dialer:         dialer,
+		sender:         cfg.Sender,
+		emailModel:     emailModel,
+		rateService:    rateService,
+		errorLog:       errorLog,
+		updateInterval: cfg.UpdateInterval,
 	}
 }
 
-func (m Mailer) StartBackgroundTask(interval time.Duration) {
+func (m Mailer) StartBackgroundTask() {
 	go func() {
-		for range time.Tick(interval) {
+		for range time.Tick(m.updateInterval) {
 			rate, err := m.rateService.GetRate()
 			if err != nil {
 				m.errorLog.Println(err)
@@ -72,7 +76,7 @@ func (m Mailer) StartBackgroundTask(interval time.Duration) {
 }
 
 func (m Mailer) prepareMessage(data interface{}) (*mail.Message, error) {
-	tmpl, err := template.New("email").Parse(messageTemplate)
+	tmpl, err := template.New("email").Parse(templates.MessageTemplate)
 	if err != nil {
 		return nil, err
 	}
