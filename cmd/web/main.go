@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -78,8 +78,8 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	emailModel := &models.EmailModelPostgres{DB: db}
-	emailService := services.NewEmailService(emailModel)
+	emailRepository := &repositories.PostgresEmailRepository{DB: db}
+	emailService := services.NewEmailService(emailRepository)
 	rateService := services.NewRateService(time.Hour)
 	rateService.StartBackgroundTask()
 

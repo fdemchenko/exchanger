@@ -1,22 +1,22 @@
 package services
 
-type EmailModel interface {
+type EmailRepository interface {
 	Insert(email string) error
 	GetAll() ([]string, error)
 }
 
 type EmailServiceImpl struct {
-	emailModel EmailModel
+	emailRepository EmailRepository
 }
 
-func NewEmailService(emailModel EmailModel) *EmailServiceImpl {
-	return &EmailServiceImpl{emailModel: emailModel}
+func NewEmailService(emailRepository EmailRepository) *EmailServiceImpl {
+	return &EmailServiceImpl{emailRepository: emailRepository}
 }
 
 func (es *EmailServiceImpl) Create(email string) error {
-	return es.emailModel.Insert(email)
+	return es.emailRepository.Insert(email)
 }
 
 func (es *EmailServiceImpl) GetAll() ([]string, error) {
-	return es.emailModel.GetAll()
+	return es.emailRepository.GetAll()
 }

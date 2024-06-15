@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/validator"
 )
 
@@ -44,7 +44,7 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 
 	err = app.emailService.Create(newEmail)
 	if err != nil {
-		if errors.Is(err, models.ErrDuplicateEmail) {
+		if errors.Is(err, repositories.ErrDuplicateEmail) {
 			app.clientError(w, http.StatusConflict)
 			return
 		}

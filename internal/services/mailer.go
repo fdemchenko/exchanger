@@ -17,7 +17,7 @@ const (
 type Mailer struct {
 	dialer         *mail.Dialer
 	sender         string
-	emailModel     EmailService
+	emailService   EmailService
 	rateService    RateService
 	updateInterval time.Duration
 }
@@ -38,13 +38,13 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailModel EmailService, rateService RateService) Mailer {
+func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
 	return Mailer{
 		dialer:         dialer,
 		sender:         cfg.Sender,
-		emailModel:     emailModel,
+		emailService:   emailService,
 		rateService:    rateService,
 		updateInterval: cfg.UpdateInterval,
 	}
@@ -63,7 +63,7 @@ func (m Mailer) StartBackgroundTask() {
 				log.Error().Err(err).Send()
 				continue
 			}
-			emails, err := m.emailModel.GetAll()
+			emails, err := m.emailService.GetAll()
 			if err != nil {
 				log.Error().Err(err).Send()
 				continue
