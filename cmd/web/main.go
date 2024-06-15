@@ -73,18 +73,8 @@ func main() {
 	}
 	log.Print("Coonected to DB successfully")
 
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	err = autoMigrate(db)
 	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres", driver)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	err = m.Up()
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		log.Fatal().Err(err).Send()
 	}
 
@@ -125,4 +115,22 @@ func openDB(cfg config) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(cfg.db.maxConnections)
 	return db, nil
+}
+
+func autoMigrate(db *sql.DB) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return err
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"postgres", driver)
+	if err != nil {
+		return err
+	}
+	err = m.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	return nil
 }
