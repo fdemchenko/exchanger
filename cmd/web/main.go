@@ -71,7 +71,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	log.Print("Coonected to DB successfully")
+	log.Info().Msg("Coonected to DB successfully")
 
 	err = autoMigrate(db)
 	if err != nil {

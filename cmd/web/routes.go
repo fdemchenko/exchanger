@@ -38,7 +38,7 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 	v := validator.New()
 	v.Check(validator.IsValidEmail(newEmail), "email", "invalid email")
 	if !v.IsValid() {
-		app.clientError(w, http.StatusUnprocessableEntity)
+		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
