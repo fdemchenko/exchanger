@@ -2,13 +2,12 @@ package services
 
 import (
 	"bytes"
-	"log"
 	"text/template"
 	"time"
 
-	"github.com/fdemchenko/exchanger/internal/models"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -18,10 +17,18 @@ const (
 type Mailer struct {
 	dialer         *mail.Dialer
 	sender         string
-	emailModel     *models.EmailModel
-	rateService    *RateService
-	errorLog       *log.Logger
+	emailService   EmailService
+	rateService    RateService
 	updateInterval time.Duration
+}
+
+type RateService interface {
+	GetRate() (*Rate, error)
+}
+
+type EmailService interface {
+	Create(email string) error
+	GetAll() ([]string, error)
 }
 
 type MailerConfig struct {
@@ -31,16 +38,14 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailModel *models.EmailModel,
-	rateService *RateService, errorLog *log.Logger) Mailer {
+func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) Mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
 	return Mailer{
 		dialer:         dialer,
 		sender:         cfg.Sender,
-		emailModel:     emailModel,
+		emailService:   emailService,
 		rateService:    rateService,
-		errorLog:       errorLog,
 		updateInterval: cfg.UpdateInterval,
 	}
 }
@@ -50,17 +55,17 @@ func (m Mailer) StartBackgroundTask() {
 		for range time.Tick(m.updateInterval) {
 			rate, err := m.rateService.GetRate()
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
 			msg, err := m.prepareMessage(rate)
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
-			emails, err := m.emailModel.GetAll()
+			emails, err := m.emailService.GetAll()
 			if err != nil {
-				m.errorLog.Println(err)
+				log.Error().Err(err).Send()
 				continue
 			}
 
@@ -68,7 +73,7 @@ func (m Mailer) StartBackgroundTask() {
 				msg.SetHeader("To", email)
 				err = m.dialer.DialAndSend(msg)
 				if err != nil {
-					m.errorLog.Println(err)
+					log.Error().Err(err).Send()
 				}
 			}
 		}

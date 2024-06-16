@@ -23,15 +23,15 @@ type Rate struct {
 
 var ErrNoFetchOccurred = errors.New("no fecth occurred yet")
 
-type RateService struct {
+type CachingRateService struct {
 	currentRate    *Rate
 	mutex          sync.RWMutex
 	fetchError     error
 	updateInterval time.Duration
 }
 
-func NewRateService(updateInterval time.Duration) *RateService {
-	return &RateService{
+func NewRateService(updateInterval time.Duration) *CachingRateService {
+	return &CachingRateService{
 		mutex:          sync.RWMutex{},
 		updateInterval: updateInterval,
 		fetchError:     ErrNoFetchOccurred,
@@ -40,7 +40,7 @@ func NewRateService(updateInterval time.Duration) *RateService {
 
 // Fetches currency data periodically, period is defined by updateInterval.
 // Makes 3 tries before giving up by default
-func (rs *RateService) StartBackgroundTask() {
+func (rs *CachingRateService) StartBackgroundTask() {
 	// initial fetch
 	rs.mutex.Lock()
 	rs.currentRate, rs.fetchError = rs.fetchExchangeRate()
@@ -68,7 +68,7 @@ func (rs *RateService) StartBackgroundTask() {
 	}()
 }
 
-func (rs *RateService) GetRate() (*Rate, error) {
+func (rs *CachingRateService) GetRate() (*Rate, error) {
 	rs.mutex.RLock()
 	defer rs.mutex.RUnlock()
 
@@ -78,7 +78,7 @@ func (rs *RateService) GetRate() (*Rate, error) {
 	return rs.currentRate, nil
 }
 
-func (rs *RateService) fetchExchangeRate() (*Rate, error) {
+func (rs *CachingRateService) fetchExchangeRate() (*Rate, error) {
 	resp, err := http.Get(RatesAPIBaseURL + "/usd.json")
 	if err != nil {
 		return nil, err

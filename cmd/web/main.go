@@ -4,17 +4,18 @@ import (
 	"database/sql"
 	"errors"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/fdemchenko/exchanger/internal/models"
+	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type config struct {
@@ -27,10 +28,9 @@ type config struct {
 }
 
 type application struct {
-	cfg               config
-	rateService       *services.RateService
-	errorLog, infoLog *log.Logger
-	emailModel        *models.EmailModel
+	cfg          config
+	rateService  services.RateService
+	emailService services.EmailService
 }
 
 const (
@@ -65,43 +65,31 @@ func main() {
 	})
 	flag.Parse()
 
-	infoLog := log.New(os.Stdout, "INFO ", log.Ldate|log.Lshortfile)
-	errorLog := log.New(os.Stderr, "ERROR ", log.Ldate|log.Lshortfile)
+	zerolog.TimeFieldFormat = time.RFC3339
 
 	db, err := openDB(cfg)
 	if err != nil {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
-	infoLog.Println("Coonected to DB successfully")
+	log.Info().Msg("Coonected to DB successfully")
 
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	err = autoMigrate(db)
 	if err != nil {
-		errorLog.Fatalln(err)
-	}
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres", driver)
-	if err != nil {
-		errorLog.Fatalln(err)
-	}
-	err = m.Up()
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		errorLog.Fatalln(err)
+		log.Fatal().Err(err).Send()
 	}
 
-	emailModel := &models.EmailModel{DB: db}
+	emailRepository := &repositories.PostgresEmailRepository{DB: db}
+	emailService := services.NewEmailService(emailRepository)
 	rateService := services.NewRateService(time.Hour)
 	rateService.StartBackgroundTask()
 
-	mailerService := services.NewMailerService(cfg.mailer, emailModel, rateService, errorLog)
+	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
 	mailerService.StartBackgroundTask()
 
 	app := application{
-		cfg:         cfg,
-		rateService: rateService,
-		errorLog:    errorLog,
-		infoLog:     infoLog,
-		emailModel:  emailModel,
+		cfg:          cfg,
+		rateService:  rateService,
+		emailService: emailService,
 	}
 
 	server := http.Server{
@@ -111,8 +99,8 @@ func main() {
 		ReadHeaderTimeout: ServerTimeout,
 	}
 
-	infoLog.Println("Starting web server at " + app.cfg.addr)
-	errorLog.Fatalln(server.ListenAndServe())
+	log.Info().Msg("Starting web server at " + app.cfg.addr)
+	log.Fatal().Err(server.ListenAndServe()).Send()
 }
 
 func openDB(cfg config) (*sql.DB, error) {
@@ -127,4 +115,22 @@ func openDB(cfg config) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(cfg.db.maxConnections)
 	return db, nil
+}
+
+func autoMigrate(db *sql.DB) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return err
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"postgres", driver)
+	if err != nil {
+		return err
+	}
+	err = m.Up()
+	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+	return nil
 }
