@@ -80,7 +80,7 @@ func main() {
 
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
-	rateService := services.NewRateService(time.Hour, services.NewHttpExchangeRateClient(http.DefaultClient))
+	rateService := services.NewRateService(time.Hour, services.NewHTTPExchangeRateClient(http.DefaultClient))
 	rateService.StartBackgroundTask()
 
 	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)

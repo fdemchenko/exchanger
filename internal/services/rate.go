@@ -86,15 +86,15 @@ func (rs *CachingRateService) GetRate() (float32, error) {
 	return rs.currentRate, nil
 }
 
-type HttpExchangeRateClient struct {
+type HTTPExchangeRateClient struct {
 	client *http.Client
 }
 
-func NewHttpExchangeRateClient(client *http.Client) *HttpExchangeRateClient {
-	return &HttpExchangeRateClient{client: client}
+func NewHTTPExchangeRateClient(client *http.Client) *HTTPExchangeRateClient {
+	return &HTTPExchangeRateClient{client: client}
 }
 
-func (ec *HttpExchangeRateClient) GetExchangeRate() (float32, error) {
+func (ec *HTTPExchangeRateClient) GetExchangeRate() (float32, error) {
 	resp, err := ec.client.Get(RatesAPIBaseURL + "/usd.json")
 	if err != nil {
 		return 0, err

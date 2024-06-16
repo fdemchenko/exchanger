@@ -11,10 +11,13 @@ import (
 
 func TestSecureHeaders(t *testing.T) {
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest("GET", "/", nil)
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	secureHeaders(handler).ServeHTTP(recorder, request)

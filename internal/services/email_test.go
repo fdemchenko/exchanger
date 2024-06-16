@@ -48,7 +48,6 @@ func TestEmailService_GetEmails(t *testing.T) {
 	emailsReturned, err := emailService.GetAll()
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, emails, emailsReturned)
-
 }
 
 func TestEmailService_CreateDuplicateEmail(t *testing.T) {
