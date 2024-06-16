@@ -24,7 +24,7 @@ func (app *application) getRate(w http.ResponseWriter, _ *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	fmt.Fprintf(w, "%f", rate.Rates.UAH)
+	fmt.Fprintf(w, "%f", rate)
 }
 
 func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {

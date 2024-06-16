@@ -23,7 +23,7 @@ type Mailer struct {
 }
 
 type RateService interface {
-	GetRate() (*Rate, error)
+	GetRate() (float32, error)
 }
 
 type EmailService interface {
