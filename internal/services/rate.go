@@ -27,7 +27,7 @@ type ExchangeRateClient interface {
 	GetExchangeRate() (float32, error)
 }
 
-type CachingRateService struct {
+type cachingRateService struct {
 	currentRate    float32
 	mutex          sync.RWMutex
 	fetchError     error
@@ -37,8 +37,8 @@ type CachingRateService struct {
 
 // Creates new rate service instance.
 // Pass nil to client to use default http client.
-func NewRateService(updateInterval time.Duration, client ExchangeRateClient) *CachingRateService {
-	return &CachingRateService{
+func NewRateService(updateInterval time.Duration, client ExchangeRateClient) *cachingRateService {
+	return &cachingRateService{
 		mutex:          sync.RWMutex{},
 		updateInterval: updateInterval,
 		fetchError:     ErrNoFetchOccurred,
@@ -48,7 +48,7 @@ func NewRateService(updateInterval time.Duration, client ExchangeRateClient) *Ca
 
 // Fetches currency data periodically, period is defined by updateInterval.
 // Makes 3 tries before giving up by default
-func (rs *CachingRateService) StartBackgroundTask() {
+func (rs *cachingRateService) StartBackgroundTask() {
 	// initial fetch
 	rs.mutex.Lock()
 	rs.currentRate, rs.fetchError = rs.client.GetExchangeRate()
@@ -76,7 +76,7 @@ func (rs *CachingRateService) StartBackgroundTask() {
 	}()
 }
 
-func (rs *CachingRateService) GetRate() (float32, error) {
+func (rs *cachingRateService) GetRate() (float32, error) {
 	rs.mutex.RLock()
 	defer rs.mutex.RUnlock()
 
@@ -86,15 +86,15 @@ func (rs *CachingRateService) GetRate() (float32, error) {
 	return rs.currentRate, nil
 }
 
-type HTTPExchangeRateClient struct {
+type httpExchangeRateClient struct {
 	client *http.Client
 }
 
-func NewHTTPExchangeRateClient(client *http.Client) *HTTPExchangeRateClient {
-	return &HTTPExchangeRateClient{client: client}
+func NewHTTPExchangeRateClient(client *http.Client) *httpExchangeRateClient {
+	return &httpExchangeRateClient{client: client}
 }
 
-func (ec *HTTPExchangeRateClient) GetExchangeRate() (float32, error) {
+func (ec *httpExchangeRateClient) GetExchangeRate() (float32, error) {
 	resp, err := ec.client.Get(RatesAPIBaseURL + "/usd.json")
 	if err != nil {
 		return 0, err
