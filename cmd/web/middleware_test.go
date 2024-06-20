@@ -20,14 +20,15 @@ func TestSecureHeaders(t *testing.T) {
 		}
 	})
 
-	secureHeaders(handler).ServeHTTP(recorder, request)
+	app := application{}
+
+	app.secureHeadersMiddleware(handler).ServeHTTP(recorder, request)
 	response := recorder.Result()
 	assert.Equal(t, response.StatusCode, http.StatusOK)
 
-	assert.Equal(t, "no-store", response.Header.Get("Cache-Control"))
-	assert.Equal(t, "frame-ancestors 'none'", response.Header.Get("Content-Security-Policy"))
-	assert.Equal(t, "nosniff", response.Header.Get("X-Content-Type-Options"))
-	assert.Equal(t, "DENY", response.Header.Get("X-Frame-Options"))
+	for headerKey, headerValue := range secureHeaders {
+		assert.Equal(t, headerValue, response.Header.Get(headerKey))
+	}
 
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)

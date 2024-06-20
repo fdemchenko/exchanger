@@ -15,7 +15,7 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("GET /rate", app.getRate)
 	mux.HandleFunc("POST /subscribe", app.subscribe)
 
-	return app.RecoveryMiddleware(app.LoggingMiddleware(secureHeaders(mux)))
+	return app.recoveryMiddleware(app.loggingMiddleware(app.secureHeadersMiddleware(mux)))
 }
 
 func (app *application) getRate(w http.ResponseWriter, _ *http.Request) {
