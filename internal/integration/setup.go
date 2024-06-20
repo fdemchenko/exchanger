@@ -2,8 +2,10 @@ package integration
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
+	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -34,13 +36,19 @@ func createTestDBContainer() (*postgres.PostgresContainer, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = postgresContainer.Exec(ctx, []string{"psql", "-U", dbUser,
-		"-d", dbName,
-		"-c", "CREATE TABLE emails (id SERIAL PRIMARY KEY, email TEXT UNIQUE NOT NULL)"})
+	dsn, err := postgresContainer.ConnectionString(ctx, "sslmode=disable")
 	if err != nil {
 		return nil, err
 	}
-	err = postgresContainer.Snapshot(ctx, postgres.WithSnapshotName("test-db"))
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	err = database.AutoMigrate(db, true)
+	if err != nil {
+		return nil, err
+	}
+	err = postgresContainer.Snapshot(context.Background(), postgres.WithSnapshotName("test-snapshot"))
 	if err != nil {
 		return nil, err
 	}

@@ -30,7 +30,6 @@ func (em *EmailServiceSuite) SetupSuite() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(dsn)
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		t.Fatal(err)
