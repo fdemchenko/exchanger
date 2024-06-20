@@ -37,6 +37,8 @@ type cachingRateService struct {
 
 // Creates new rate service instance.
 // Pass nil to client to use default http client.
+//
+//nolint:revive
 func NewRateService(updateInterval time.Duration, client ExchangeRateClient) *cachingRateService {
 	return &cachingRateService{
 		mutex:          sync.RWMutex{},
@@ -90,6 +92,7 @@ type httpExchangeRateClient struct {
 	client *http.Client
 }
 
+//nolint:revive
 func NewHTTPExchangeRateClient(client *http.Client) *httpExchangeRateClient {
 	return &httpExchangeRateClient{client: client}
 }

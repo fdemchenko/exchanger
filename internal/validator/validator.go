@@ -1,6 +1,6 @@
 package validator
 
-type validator struct {
+type Validator struct {
 	Errors map[string]string
 }
 
