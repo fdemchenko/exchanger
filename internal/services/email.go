@@ -5,18 +5,19 @@ type EmailRepository interface {
 	GetAll() ([]string, error)
 }
 
-type EmailServiceImpl struct {
+type emailServiceImpl struct {
 	emailRepository EmailRepository
 }
 
-func NewEmailService(emailRepository EmailRepository) *EmailServiceImpl {
-	return &EmailServiceImpl{emailRepository: emailRepository}
+//nolint:revive
+func NewEmailService(emailRepository EmailRepository) *emailServiceImpl {
+	return &emailServiceImpl{emailRepository: emailRepository}
 }
 
-func (es *EmailServiceImpl) Create(email string) error {
+func (es *emailServiceImpl) Create(email string) error {
 	return es.emailRepository.Insert(email)
 }
 
-func (es *EmailServiceImpl) GetAll() ([]string, error) {
+func (es *emailServiceImpl) GetAll() ([]string, error) {
 	return es.emailRepository.GetAll()
 }

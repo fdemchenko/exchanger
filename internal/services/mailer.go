@@ -14,7 +14,7 @@ const (
 	DialerTimeout = 5 * time.Second
 )
 
-type Mailer struct {
+type mailer struct {
 	dialer         *mail.Dialer
 	sender         string
 	emailService   EmailService
@@ -23,7 +23,7 @@ type Mailer struct {
 }
 
 type RateService interface {
-	GetRate() (*Rate, error)
+	GetRate() (float32, error)
 }
 
 type EmailService interface {
@@ -38,10 +38,11 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) Mailer {
+//nolint:revive
+func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
-	return Mailer{
+	return mailer{
 		dialer:         dialer,
 		sender:         cfg.Sender,
 		emailService:   emailService,
@@ -50,7 +51,7 @@ func NewMailerService(cfg MailerConfig, emailService EmailService, rateService R
 	}
 }
 
-func (m Mailer) StartBackgroundTask() {
+func (m mailer) StartBackgroundTask() {
 	go func() {
 		for range time.Tick(m.updateInterval) {
 			rate, err := m.rateService.GetRate()
@@ -80,7 +81,7 @@ func (m Mailer) StartBackgroundTask() {
 	}()
 }
 
-func (m Mailer) prepareMessage(data interface{}) (*mail.Message, error) {
+func (m mailer) prepareMessage(data interface{}) (*mail.Message, error) {
 	tmpl, err := template.New("email").Parse(templates.MessageTemplate)
 	if err != nil {
 		return nil, err

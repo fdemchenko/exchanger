@@ -2,17 +2,14 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 	"flag"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -73,14 +70,14 @@ func main() {
 	}
 	log.Info().Msg("Coonected to DB successfully")
 
-	err = autoMigrate(db)
+	err = database.AutoMigrate(db, false)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
-	rateService := services.NewRateService(time.Hour)
+	rateService := services.NewRateService(time.Hour, services.NewHTTPExchangeRateClient(http.DefaultClient))
 	rateService.StartBackgroundTask()
 
 	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
@@ -115,22 +112,4 @@ func openDB(cfg config) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(cfg.db.maxConnections)
 	return db, nil
-}
-
-func autoMigrate(db *sql.DB) error {
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		return err
-	}
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://migrations",
-		"postgres", driver)
-	if err != nil {
-		return err
-	}
-	err = m.Up()
-	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
-	}
-	return nil
 }
