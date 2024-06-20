@@ -39,6 +39,7 @@ func TestRateEndpointIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = strconv.ParseFloat(string(body), 32)
+	rate, err := strconv.ParseFloat(string(body), 32)
 	assert.NoError(t, err)
+	assert.Greater(t, rate, 0)
 }
