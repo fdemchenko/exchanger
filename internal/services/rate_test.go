@@ -22,7 +22,7 @@ func (ec *MockExchangeRateClient) GetExchangeRate() (float32, error) {
 	return args.Get(0).(float32), args.Error(1)
 }
 
-func TestRateService(t *testing.T) {
+func TestRateService_RateIsCorrect(t *testing.T) {
 	mockRateClient := new(MockExchangeRateClient)
 	mockRateClient.On("GetExchangeRate").Return(float32(8.0), nil)
 	rateService := NewRateService(TestingRateServiceFetchInterval, mockRateClient)
@@ -31,12 +31,28 @@ func TestRateService(t *testing.T) {
 	rate, err := rateService.GetRate()
 	assert.Equal(t, float32(8.0), rate)
 	assert.NoError(t, err)
+}
+
+func TestRateService_RateIsCached(t *testing.T) {
+	mockRateClient := new(MockExchangeRateClient)
+	mockRateClient.On("GetExchangeRate").Return(float32(8.0), nil)
+	rateService := NewRateService(TestingRateServiceFetchInterval, mockRateClient)
+	rateService.StartBackgroundTask()
+
+	_, _ = rateService.GetRate()
 	_, _ = rateService.GetRate()
 
 	// Make sure service cached result from previoues calls.
 	mockRateClient.AssertNumberOfCalls(t, "GetExchangeRate", 1)
+}
 
-	// Make sure service re-fetch after update interval
+func TestRateService_RateIsFetchedAfterInterval(t *testing.T) {
+	mockRateClient := new(MockExchangeRateClient)
+	mockRateClient.On("GetExchangeRate").Return(float32(8.0), nil)
+	rateService := NewRateService(TestingRateServiceFetchInterval, mockRateClient)
+	rateService.StartBackgroundTask()
+
+	// Make sure service re-fetch after update interval.
 	time.Sleep(TestingRateServiceWaitingDuration)
-	mockRateClient.AssertCalled(t, "GetExchangeRate")
+	assert.GreaterOrEqual(t, len(mockRateClient.Calls), 2)
 }
