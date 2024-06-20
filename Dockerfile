@@ -22,7 +22,6 @@ WORKDIR /app
 
 # Copy the binary from the build stage
 COPY --from=build /app/exchanger .
-COPY --from=build /app/migrations migrations
 
 EXPOSE 8080
 

@@ -70,7 +70,7 @@ func main() {
 	}
 	log.Info().Msg("Coonected to DB successfully")
 
-	err = database.AutoMigrate(db)
+	err = database.AutoMigrate(db, false)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
