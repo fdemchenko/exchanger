@@ -35,6 +35,7 @@ const (
 	ServerTimeout           = 10 * time.Second
 	DefaultMaxDBConnections = 25
 	DefaultMailerInterval   = 24 * time.Hour
+	RateCachingDuration     = 15 * time.Minute
 )
 
 func main() {
@@ -77,8 +78,10 @@ func main() {
 
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
-	rateService := services.NewRateService(time.Hour, services.NewHTTPExchangeRateClient(http.DefaultClient))
-	rateService.StartBackgroundTask()
+	rateService := services.NewRateService(
+		services.WithFetchers(services.NBURateFetcher, services.FawazAhmedRateFetcher),
+		services.WithUpdateInterval(RateCachingDuration),
+	)
 
 	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
 	mailerService.StartBackgroundTask()

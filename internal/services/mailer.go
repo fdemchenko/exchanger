@@ -23,7 +23,7 @@ type mailer struct {
 }
 
 type RateService interface {
-	GetRate() (float32, error)
+	GetRate(string) (float32, error)
 }
 
 type EmailService interface {
@@ -53,7 +53,7 @@ func NewMailerService(cfg MailerConfig, emailService EmailService, rateService R
 func (m mailer) StartBackgroundTask() {
 	go func() {
 		for range time.Tick(m.updateInterval) {
-			rate, err := m.rateService.GetRate()
+			rate, err := m.rateService.GetRate("usd")
 			if err != nil {
 				log.Error().Err(err).Send()
 				continue

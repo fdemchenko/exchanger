@@ -17,8 +17,10 @@ func TestRateEndpointIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	rateService := services.NewRateService(time.Minute, services.NewHTTPExchangeRateClient(http.DefaultClient))
-	rateService.StartBackgroundTask()
+	rateService := services.NewRateService(
+		services.WithFetchers(services.NBURateFetcher, services.FawazAhmedRateFetcher),
+		services.WithUpdateInterval(time.Minute*15),
+	)
 	app := application{
 		rateService: rateService,
 	}

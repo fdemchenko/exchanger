@@ -19,7 +19,7 @@ func (app *application) routes() http.Handler {
 }
 
 func (app *application) getRate(w http.ResponseWriter, _ *http.Request) {
-	rate, err := app.rateService.GetRate()
+	rate, err := app.rateService.GetRate("usd")
 	if err != nil {
 		app.serverError(w, err)
 		return

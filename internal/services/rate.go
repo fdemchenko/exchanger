@@ -1,112 +1,151 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
-	"sync"
+	"strings"
 	"time"
-)
 
-const RatesAPIBaseURL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies"
+	"github.com/fdemchenko/exchanger/internal/cache"
+)
 
 const (
-	RetryInterval = 500 * time.Millisecond
-	RetryCount    = 3
+	NBUExchangeRateURL        = "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json"
+	FawazAhmedExchangeRateURL = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies"
+
+	DefaultCachingDuration = 15 * time.Minute
+	RateFetchTimeout       = 10 * time.Second
 )
 
-type Rate struct {
+var ErrInvalidCurrencyCode = errors.New("invalid currency code")
+
+type ExchangeRateFetcher func(code string, client *http.Client) (float32, error)
+
+type NBUResponse struct {
+	Rates []struct {
+		Rate float32 `json:"rate"`
+		Code string  `json:"cc"`
+	}
+}
+
+func NBURateFetcher(code string, client *http.Client) (float32, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), RateFetchTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, NBUExchangeRateURL, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	var nbuResponse NBUResponse
+	err = json.NewDecoder(resp.Body).Decode(&nbuResponse)
+	if err != nil {
+		return 0, err
+	}
+	for _, rate := range nbuResponse.Rates {
+		if strings.EqualFold(code, rate.Code) {
+			return rate.Rate, nil
+		}
+	}
+	return 0, ErrInvalidCurrencyCode
+}
+
+type FawazAhmedResponse struct {
 	Rates struct {
 		UAH float32 `json:"uah"`
 	} `json:"usd"`
 }
 
-var ErrNoFetchOccurred = errors.New("no fecth occurred yet")
+func FawazAhmedRateFetcher(code string, client *http.Client) (float32, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), RateFetchTimeout)
+	defer cancel()
 
-type ExchangeRateClient interface {
-	GetExchangeRate() (float32, error)
-}
-
-type cachingRateService struct {
-	currentRate    float32
-	mutex          sync.RWMutex
-	fetchError     error
-	updateInterval time.Duration
-	client         ExchangeRateClient
-}
-
-// Creates new rate service instance.
-// Pass nil to client to use default http client.
-func NewRateService(updateInterval time.Duration, client ExchangeRateClient) *cachingRateService {
-	return &cachingRateService{
-		mutex:          sync.RWMutex{},
-		updateInterval: updateInterval,
-		fetchError:     ErrNoFetchOccurred,
-		client:         client,
-	}
-}
-
-// Fetches currency data periodically, period is defined by updateInterval.
-// Makes 3 tries before giving up by default
-func (rs *cachingRateService) StartBackgroundTask() {
-	// initial fetch
-	rs.mutex.Lock()
-	rs.currentRate, rs.fetchError = rs.client.GetExchangeRate()
-	rs.mutex.Unlock()
-	go func() {
-		for range time.Tick(rs.updateInterval) {
-			for i := 0; i < RetryCount; i++ {
-				rate, err := rs.client.GetExchangeRate()
-				if err == nil {
-					rs.mutex.Lock()
-					rs.currentRate = rate
-					rs.fetchError = nil
-					rs.mutex.Unlock()
-					break
-				}
-				if i == RetryCount-1 {
-					// Give up
-					rs.mutex.Lock()
-					rs.fetchError = err
-					rs.mutex.Unlock()
-				}
-				time.Sleep(RetryInterval)
-			}
-		}
-	}()
-}
-
-func (rs *cachingRateService) GetRate() (float32, error) {
-	rs.mutex.RLock()
-	defer rs.mutex.RUnlock()
-
-	if rs.fetchError != nil {
-		return 0, rs.fetchError
-	}
-	return rs.currentRate, nil
-}
-
-type httpExchangeRateClient struct {
-	client *http.Client
-}
-
-func NewHTTPExchangeRateClient(client *http.Client) *httpExchangeRateClient {
-	return &httpExchangeRateClient{client: client}
-}
-
-func (ec *httpExchangeRateClient) GetExchangeRate() (float32, error) {
-	resp, err := ec.client.Get(RatesAPIBaseURL + "/usd.json")
+	reqURL := fmt.Sprintf("%s/%s.json", FawazAhmedExchangeRateURL, strings.ToLower(code))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return 0, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, ErrInvalidCurrencyCode
 	}
 
 	defer resp.Body.Close()
-	var rate Rate
-
-	err = json.NewDecoder(resp.Body).Decode(&rate)
+	var fawazAhmedResponse FawazAhmedResponse
+	err = json.NewDecoder(resp.Body).Decode(&fawazAhmedResponse)
 	if err != nil {
 		return 0, err
 	}
+	return fawazAhmedResponse.Rates.UAH, nil
+}
 
-	return rate.Rates.UAH, nil
+type cachingRateService struct {
+	fetchers       []ExchangeRateFetcher
+	client         *http.Client
+	updateInterval time.Duration
+	cache          *cache.Cache[string, float32]
+}
+
+type Option func(*cachingRateService)
+
+func WithClient(client *http.Client) Option {
+	return func(crs *cachingRateService) {
+		crs.client = client
+	}
+}
+
+func WithUpdateInterval(updateInterval time.Duration) Option {
+	return func(crs *cachingRateService) {
+		crs.updateInterval = updateInterval
+	}
+}
+
+func WithFetchers(fetchers ...ExchangeRateFetcher) Option {
+	return func(crs *cachingRateService) {
+		crs.fetchers = fetchers
+	}
+}
+
+func NewRateService(options ...Option) *cachingRateService {
+	// caching rate service with default values.
+	service := &cachingRateService{
+		client:         http.DefaultClient,
+		updateInterval: DefaultCachingDuration,
+		fetchers:       []ExchangeRateFetcher{NBURateFetcher},
+		cache:          cache.New[string, float32](),
+	}
+
+	for _, option := range options {
+		option(service)
+	}
+	return service
+}
+
+func (crs *cachingRateService) GetRate(currencyCode string) (float32, error) {
+	if rate, exists := crs.cache.Get(strings.ToLower(currencyCode)); exists {
+		return rate, nil
+	}
+
+	var err error
+	var rate float32
+	for _, fetcher := range crs.fetchers {
+		rate, err = fetcher(currencyCode, crs.client)
+		if err == nil {
+			crs.cache.Set(strings.ToLower(currencyCode), rate, crs.updateInterval)
+			return rate, nil
+		}
+	}
+
+	return 0, err
 }
