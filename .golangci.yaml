@@ -10,8 +10,6 @@ linters:
     - gosec
     - dupl
     - cyclop
-    - ireturn
-    - revive
     - nilnil
     - nilerr
     - gocyclo

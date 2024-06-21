@@ -38,7 +38,6 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-//nolint:revive
 func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout

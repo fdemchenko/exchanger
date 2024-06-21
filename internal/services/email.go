@@ -9,7 +9,6 @@ type emailServiceImpl struct {
 	emailRepository EmailRepository
 }
 
-//nolint:revive
 func NewEmailService(emailRepository EmailRepository) *emailServiceImpl {
 	return &emailServiceImpl{emailRepository: emailRepository}
 }
