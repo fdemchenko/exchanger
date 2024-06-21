@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/fdemchenko/exchanger/internal/cache"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -25,10 +26,8 @@ var ErrInvalidCurrencyCode = errors.New("invalid currency code")
 type ExchangeRateFetcher func(code string, client *http.Client) (float32, error)
 
 type NBUResponse struct {
-	Rates []struct {
-		Rate float32 `json:"rate"`
-		Code string  `json:"cc"`
-	}
+	Rate float32 `json:"rate"`
+	Code string  `json:"cc"`
 }
 
 func NBURateFetcher(code string, client *http.Client) (float32, error) {
@@ -44,12 +43,12 @@ func NBURateFetcher(code string, client *http.Client) (float32, error) {
 		return 0, err
 	}
 	defer resp.Body.Close()
-	var nbuResponse NBUResponse
+	var nbuResponse []NBUResponse
 	err = json.NewDecoder(resp.Body).Decode(&nbuResponse)
 	if err != nil {
 		return 0, err
 	}
-	for _, rate := range nbuResponse.Rates {
+	for _, rate := range nbuResponse {
 		if strings.EqualFold(code, rate.Code) {
 			return rate.Rate, nil
 		}
@@ -91,7 +90,7 @@ func FawazAhmedRateFetcher(code string, client *http.Client) (float32, error) {
 }
 
 type cachingRateService struct {
-	fetchers       []ExchangeRateFetcher
+	namedFetchers  []NamedFetcher
 	client         *http.Client
 	updateInterval time.Duration
 	cache          *cache.Cache[string, float32]
@@ -111,9 +110,18 @@ func WithUpdateInterval(updateInterval time.Duration) Option {
 	}
 }
 
-func WithFetchers(fetchers ...ExchangeRateFetcher) Option {
+type NamedFetcher struct {
+	fetcher ExchangeRateFetcher
+	name    string
+}
+
+func CreateNamedFetcher(fetcher ExchangeRateFetcher, name string) NamedFetcher {
+	return NamedFetcher{fetcher: fetcher, name: name}
+}
+
+func WithFetchers(fetchers ...NamedFetcher) Option {
 	return func(crs *cachingRateService) {
-		crs.fetchers = fetchers
+		crs.namedFetchers = fetchers
 	}
 }
 
@@ -122,7 +130,7 @@ func NewRateService(options ...Option) *cachingRateService {
 	service := &cachingRateService{
 		client:         http.DefaultClient,
 		updateInterval: DefaultCachingDuration,
-		fetchers:       []ExchangeRateFetcher{NBURateFetcher},
+		namedFetchers:  []NamedFetcher{CreateNamedFetcher(NBURateFetcher, "bank.gov.ua (NBU)")},
 		cache:          cache.New[string, float32](),
 	}
 
@@ -139,8 +147,9 @@ func (crs *cachingRateService) GetRate(currencyCode string) (float32, error) {
 
 	var err error
 	var rate float32
-	for _, fetcher := range crs.fetchers {
-		rate, err = fetcher(currencyCode, crs.client)
+	for _, namedFetcher := range crs.namedFetchers {
+		rate, err = namedFetcher.fetcher(currencyCode, crs.client)
+		log.Debug().Str("name", namedFetcher.name).Float32("rate", rate).Err(err).Send()
 		if err == nil {
 			crs.cache.Set(strings.ToLower(currencyCode), rate, crs.updateInterval)
 			return rate, nil

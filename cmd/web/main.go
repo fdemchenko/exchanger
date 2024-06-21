@@ -79,7 +79,8 @@ func main() {
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
 	rateService := services.NewRateService(
-		services.WithFetchers(services.NBURateFetcher, services.FawazAhmedRateFetcher),
+		services.WithFetchers(services.CreateNamedFetcher(services.NBURateFetcher, "bank.gov.ua (NBU)"),
+			services.CreateNamedFetcher(services.FawazAhmedRateFetcher, "jsDeliver ExchagerAPI")),
 		services.WithUpdateInterval(RateCachingDuration),
 	)
 
@@ -99,7 +100,7 @@ func main() {
 		ReadHeaderTimeout: ServerTimeout,
 	}
 
-	log.Info().Msg("Starting web server at " + app.cfg.addr)
+	log.Info().Str("address", app.cfg.addr).Msg("Web server started")
 	log.Fatal().Err(server.ListenAndServe()).Send()
 }
 
