@@ -32,7 +32,7 @@ func TestRateService_RateIsCorrect(t *testing.T) {
 	mockRateFetcher := new(MockExchangeRateFetcher)
 	mockRateFetcher.On("FirstFetcher").Return(float32(8.0), nil)
 
-	rateService := NewRateService(WithFetchers(mockRateFetcher.FirstFetcher))
+	rateService := NewRateService(WithFetchers(CreateNamedFetcher(mockRateFetcher.FirstFetcher, "first")))
 	rate, err := rateService.GetRate("usd")
 
 	assert.Equal(t, float32(8.0), rate)
@@ -42,7 +42,7 @@ func TestRateService_RateIsCorrect(t *testing.T) {
 func TestRateService_RateIsCached(t *testing.T) {
 	mockRateFetcher := new(MockExchangeRateFetcher)
 	mockRateFetcher.On("FirstFetcher").Return(float32(8.0), nil)
-	rateService := NewRateService(WithFetchers(mockRateFetcher.FirstFetcher))
+	rateService := NewRateService(WithFetchers(CreateNamedFetcher(mockRateFetcher.FirstFetcher, "first")))
 	_, _ = rateService.GetRate("usd")
 	_, _ = rateService.GetRate("usd")
 
@@ -54,7 +54,7 @@ func TestRateService_RateIsFetchedAfterInterval(t *testing.T) {
 	mockRateFetcher := new(MockExchangeRateFetcher)
 	mockRateFetcher.On("FirstFetcher").Return(float32(8.0), nil)
 	rateService := NewRateService(
-		WithFetchers(mockRateFetcher.FirstFetcher),
+		WithFetchers(CreateNamedFetcher(mockRateFetcher.FirstFetcher, "first")),
 		WithUpdateInterval(TestingRateServiceFetchInterval))
 
 	// Make sure service re-fetch after update interval.
@@ -69,7 +69,10 @@ func TestRateService_FallbackToAnotherFetcher(t *testing.T) {
 	mockRateFetcher := new(MockExchangeRateFetcher)
 	mockRateFetcher.On("FirstFetcher").Return(float32(0), ErrInvalidCurrencyCode)
 	mockRateFetcher.On("SecondFetcher").Return(float32(8.0), nil)
-	rateService := NewRateService(WithFetchers(mockRateFetcher.FirstFetcher, mockRateFetcher.SecondFetcher))
+	rateService := NewRateService(
+		WithFetchers(CreateNamedFetcher(mockRateFetcher.FirstFetcher, "first")),
+		WithFetchers(CreateNamedFetcher(mockRateFetcher.SecondFetcher, "second")),
+	)
 
 	rate, err := rateService.GetRate("usd")
 	assert.NoError(t, err)

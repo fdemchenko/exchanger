@@ -18,9 +18,9 @@ func TestRateEndpointIntegration(t *testing.T) {
 	}
 
 	rateService := services.NewRateService(
-		services.WithFetchers(services.NBURateFetcher, services.FawazAhmedRateFetcher),
-		services.WithUpdateInterval(time.Minute*15),
-	)
+		services.WithFetchers(services.CreateNamedFetcher(services.NBURateFetcher, "bank.gov.ua (NBU)"),
+			services.CreateNamedFetcher(services.FawazAhmedRateFetcher, "jsDeliver ExchagerAPI")),
+		services.WithUpdateInterval(time.Minute*15))
 	app := application{
 		rateService: rateService,
 	}
