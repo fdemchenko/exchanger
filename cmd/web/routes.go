@@ -18,8 +18,8 @@ func (app *application) routes() http.Handler {
 	return app.recoveryMiddleware(app.loggingMiddleware(app.secureHeadersMiddleware(mux)))
 }
 
-func (app *application) getRate(w http.ResponseWriter, _ *http.Request) {
-	rate, err := app.rateService.GetRate("usd")
+func (app *application) getRate(w http.ResponseWriter, r *http.Request) {
+	rate, err := app.rateService.GetRate(r.Context(), "usd")
 	if err != nil {
 		app.serverError(w, err)
 		return

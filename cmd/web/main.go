@@ -10,6 +10,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -78,10 +79,13 @@ func main() {
 
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
-	rateService := services.NewRateService(
-		services.WithFetchers(services.CreateNamedFetcher(services.NBURateFetcher, "bank.gov.ua (NBU)"),
-			services.CreateNamedFetcher(services.FawazAhmedRateFetcher, "jsDeliver ExchagerAPI")),
-		services.WithUpdateInterval(RateCachingDuration),
+	rateService := rate.NewRateService(
+		rate.WithFetchers(
+			rate.NewNBURateFetcher("nbu fetcher"),
+			rate.NewFawazRateFetcher("fawaz fetcher"),
+			rate.NewPrivatRateFetcher("privat fetcher"),
+		),
+		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
 	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
