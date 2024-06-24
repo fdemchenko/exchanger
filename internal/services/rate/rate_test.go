@@ -13,6 +13,7 @@ import (
 const (
 	TestingRateServiceFetchInterval   = time.Second * 1
 	TestingRateServiceWaitingDuration = time.Second * 2
+	ExpectedExchangeRate              = float32(8.0)
 )
 
 type MockNBUFetcher struct {
@@ -57,7 +58,7 @@ func (mpf *MockPrivatFetcher) Name() string {
 func TestRateService_RateIsCorrect(t *testing.T) {
 	ctx := context.Background()
 	mockNBUFetcher := new(MockNBUFetcher)
-	mockNBUFetcher.On("Fetch").Return(float32(8.0), nil)
+	mockNBUFetcher.On("Fetch").Return(ExpectedExchangeRate, nil)
 
 	rateService := NewRateService(WithFetchers(mockNBUFetcher))
 	rate, err := rateService.GetRate(ctx, "usd")
@@ -82,7 +83,7 @@ func TestRateService_RateIsCached(t *testing.T) {
 func TestRateService_RateIsFetchedAfterInterval(t *testing.T) {
 	ctx := context.Background()
 	mockNBUFetcher := new(MockNBUFetcher)
-	mockNBUFetcher.On("Fetch").Return(float32(8.0), nil)
+	mockNBUFetcher.On("Fetch").Return(ExpectedExchangeRate, nil)
 
 	rateService := NewRateService(
 		WithFetchers(mockNBUFetcher),
@@ -105,7 +106,7 @@ func TestRateService_FallbackToAnotherFetcher(t *testing.T) {
 	mockFawazFetcher.On("Fetch").Return(float32(0), ErrInvalidCurrencyCode)
 
 	mockPrivatFetcher := new(MockPrivatFetcher)
-	mockPrivatFetcher.On("Fetch").Return(float32(8.0), nil)
+	mockPrivatFetcher.On("Fetch").Return(ExpectedExchangeRate, nil)
 
 	rateService := NewRateService(
 		WithFetchers(mockNBUFetcher, mockFawazFetcher, mockPrivatFetcher),
@@ -113,7 +114,7 @@ func TestRateService_FallbackToAnotherFetcher(t *testing.T) {
 
 	rate, err := rateService.GetRate(ctx, "usd")
 	assert.NoError(t, err)
-	assert.Equal(t, float32(8.0), rate)
+	assert.Equal(t, ExpectedExchangeRate, rate)
 
 	mockNBUFetcher.AssertCalled(t, "Fetch")
 	mockFawazFetcher.AssertCalled(t, "Fetch")
