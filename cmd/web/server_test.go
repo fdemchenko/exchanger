@@ -6,9 +6,8 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"time"
 
-	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/rate"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,10 +16,14 @@ func TestRateEndpointIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	rateService := services.NewRateService(
-		services.WithFetchers(services.CreateNamedFetcher(services.NBURateFetcher, "bank.gov.ua (NBU)"),
-			services.CreateNamedFetcher(services.FawazAhmedRateFetcher, "jsDeliver ExchagerAPI")),
-		services.WithUpdateInterval(time.Minute*15))
+	rateService := rate.NewRateService(
+		rate.WithFetchers(
+			rate.NewNBURateFetcher("nbu fetcher"),
+			rate.NewFawazRateFetcher("fawaz fetcher"),
+			rate.NewPrivatRateFetcher("privat fetcher"),
+		),
+		rate.WithUpdateInterval(RateCachingDuration),
+	)
 	app := application{
 		rateService: rateService,
 	}
