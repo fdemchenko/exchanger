@@ -22,8 +22,8 @@ type FawazRateFetcher struct {
 	name string
 }
 
-func (nrf FawazRateFetcher) Name() string {
-	return nrf.name
+func (frf FawazRateFetcher) Name() string {
+	return frf.name
 }
 
 func NewFawazRateFetcher(name string) FawazRateFetcher {

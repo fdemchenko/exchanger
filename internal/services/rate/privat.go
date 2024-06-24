@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -12,25 +13,25 @@ const (
 )
 
 type PrivatResponse struct {
-	Base     string  `json:"base"`
-	Currency string  `json:"ccy"`
-	Buy      float32 `json:"buy"`
-	Sale     float32 `json:"sale"`
+	Base     string `json:"base"`
+	Currency string `json:"ccy"`
+	Buy      string `json:"buy"`
+	Sale     string `json:"sale"`
 }
 
 type PrivatRateFetcher struct {
 	name string
 }
 
-func (nrf PrivatRateFetcher) Name() string {
-	return nrf.name
+func (prf PrivatRateFetcher) Name() string {
+	return prf.name
 }
 
 func NewPrivatRateFetcher(name string) PrivatRateFetcher {
 	return PrivatRateFetcher{name: name}
 }
 
-func (nfr PrivatRateFetcher) Fetch(ctx context.Context, code string, client *http.Client) (float32, error) {
+func (prf PrivatRateFetcher) Fetch(ctx context.Context, code string, client *http.Client) (float32, error) {
 	ctx, cancel := context.WithTimeout(ctx, RateFetchTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, PrivatExchangeRateURL, nil)
@@ -50,7 +51,11 @@ func (nfr PrivatRateFetcher) Fetch(ctx context.Context, code string, client *htt
 	}
 	for _, rate := range privatResponse {
 		if strings.EqualFold(code, rate.Currency) {
-			return rate.Buy, nil
+			rateFloat64, err := strconv.ParseFloat(rate.Buy, 32)
+			if err != nil {
+				return 0, err
+			}
+			return float32(rateFloat64), nil
 		}
 	}
 	return 0, ErrInvalidCurrencyCode

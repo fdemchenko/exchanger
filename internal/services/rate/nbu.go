@@ -28,7 +28,7 @@ func NewNBURateFetcher(name string) NBURateFetcher {
 	return NBURateFetcher{name: name}
 }
 
-func (nfr NBURateFetcher) Fetch(ctx context.Context, code string, client *http.Client) (float32, error) {
+func (nrf NBURateFetcher) Fetch(ctx context.Context, code string, client *http.Client) (float32, error) {
 	ctx, cancel := context.WithTimeout(ctx, RateFetchTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, NBUExchangeRateURL, nil)
