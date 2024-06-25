@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"text/template"
 	"time"
 
@@ -23,7 +24,7 @@ type mailer struct {
 }
 
 type RateService interface {
-	GetRate() (float32, error)
+	GetRate(context.Context, string) (float32, error)
 }
 
 type EmailService interface {
@@ -38,7 +39,6 @@ type MailerConfig struct {
 	UpdateInterval             time.Duration
 }
 
-//nolint:revive
 func NewMailerService(cfg MailerConfig, emailService EmailService, rateService RateService) mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
@@ -54,7 +54,7 @@ func NewMailerService(cfg MailerConfig, emailService EmailService, rateService R
 func (m mailer) StartBackgroundTask() {
 	go func() {
 		for range time.Tick(m.updateInterval) {
-			rate, err := m.rateService.GetRate()
+			rate, err := m.rateService.GetRate(context.Background(), "usd")
 			if err != nil {
 				log.Error().Err(err).Send()
 				continue

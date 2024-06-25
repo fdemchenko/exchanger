@@ -6,9 +6,8 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"time"
 
-	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/rate"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,8 +16,14 @@ func TestRateEndpointIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	rateService := services.NewRateService(time.Minute, services.NewHTTPExchangeRateClient(http.DefaultClient))
-	rateService.StartBackgroundTask()
+	rateService := rate.NewRateService(
+		rate.WithFetchers(
+			rate.NewNBURateFetcher("nbu fetcher"),
+			rate.NewFawazRateFetcher("fawaz fetcher"),
+			rate.NewPrivatRateFetcher("privat fetcher"),
+		),
+		rate.WithUpdateInterval(RateCachingDuration),
+	)
 	app := application{
 		rateService: rateService,
 	}

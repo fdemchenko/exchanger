@@ -11,6 +11,11 @@ Edit `docker-compose.yml` file and put your SMTP credentials, to be able to send
 
 To start http server and PostgreSQL service run: - `docker compose up`
 
+## Tests
+
+To run unit tests for whole applicaton run `go test -short ./...`
+Run `go test ./...` to run all tests, including integration ones (require docker installed on your system)
+
 ## TODO
 
 - [ ] Graceful server shutdown

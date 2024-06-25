@@ -10,6 +10,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -35,6 +36,7 @@ const (
 	ServerTimeout           = 10 * time.Second
 	DefaultMaxDBConnections = 25
 	DefaultMailerInterval   = 24 * time.Hour
+	RateCachingDuration     = 15 * time.Minute
 )
 
 func main() {
@@ -77,8 +79,14 @@ func main() {
 
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
-	rateService := services.NewRateService(time.Hour, services.NewHTTPExchangeRateClient(http.DefaultClient))
-	rateService.StartBackgroundTask()
+	rateService := rate.NewRateService(
+		rate.WithFetchers(
+			rate.NewNBURateFetcher("nbu fetcher"),
+			rate.NewFawazRateFetcher("fawaz fetcher"),
+			rate.NewPrivatRateFetcher("privat fetcher"),
+		),
+		rate.WithUpdateInterval(RateCachingDuration),
+	)
 
 	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
 	mailerService.StartBackgroundTask()
@@ -96,7 +104,7 @@ func main() {
 		ReadHeaderTimeout: ServerTimeout,
 	}
 
-	log.Info().Msg("Starting web server at " + app.cfg.addr)
+	log.Info().Str("address", app.cfg.addr).Msg("Web server started")
 	log.Fatal().Err(server.ListenAndServe()).Send()
 }
 
