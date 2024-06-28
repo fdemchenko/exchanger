@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/mailer"
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
@@ -22,13 +24,22 @@ type config struct {
 		dsn            string
 		maxConnections int
 	}
-	mailer services.MailerConfig
+	mailer mailer.MailerConfig
+}
+
+type RateService interface {
+	GetRate(context.Context, string) (float32, error)
+}
+
+type EmailService interface {
+	Create(email string) error
+	GetAll() ([]string, error)
 }
 
 type application struct {
 	cfg          config
-	rateService  services.RateService
-	emailService services.EmailService
+	rateService  RateService
+	emailService EmailService
 }
 
 const (
@@ -88,8 +99,8 @@ func main() {
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
-	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
-	mailerService.StartBackgroundTask()
+	mailerService := mailer.NewMailerService(cfg.mailer, emailService, rateService)
+	mailerService.StartEmailSending()
 
 	app := application{
 		cfg:          cfg,
