@@ -43,15 +43,18 @@ type application struct {
 }
 
 const (
-	DefaultSMTPPort         = 25
-	ServerTimeout           = 10 * time.Second
-	DefaultMaxDBConnections = 25
-	DefaultMailerInterval   = 24 * time.Hour
-	RateCachingDuration     = 15 * time.Minute
+	DefaultSMTPPort                 = 25
+	ServerTimeout                   = 10 * time.Second
+	DefaultMaxDBConnections         = 25
+	DefaultMailerInterval           = 24 * time.Hour
+	RateCachingDuration             = 15 * time.Minute
+	DefaultMailerConnectionPoolSize = 3
 )
 
 func main() {
 	var cfg config
+	cfg.mailer.UpdateInterval = DefaultMailerInterval
+	cfg.mailer.ConnectionPoolSize = DefaultMailerConnectionPoolSize
 	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
@@ -100,7 +103,7 @@ func main() {
 	)
 
 	mailerService := mailer.NewMailerService(cfg.mailer, emailService, rateService)
-	mailerService.StartEmailSending()
+	mailerService.StartEmailSending(cfg.mailer.UpdateInterval)
 
 	app := application{
 		cfg:          cfg,

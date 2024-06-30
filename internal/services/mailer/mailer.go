@@ -3,6 +3,8 @@ package mailer
 import (
 	"bytes"
 	"context"
+	"math"
+	"sync"
 	"text/template"
 	"time"
 
@@ -16,12 +18,13 @@ const (
 )
 
 type mailer struct {
-	dialer         *mail.Dialer
-	sender         string
-	emailService   EmailService
-	rateService    RateService
-	updateInterval time.Duration
-	stopChan       chan bool
+	dialer             *mail.Dialer
+	sender             string
+	emailService       EmailService
+	rateService        RateService
+	stopChan           chan bool
+	connectionPoolSize int
+	currencyTemplates  map[string]string
 }
 
 type RateService interface {
@@ -36,6 +39,7 @@ type EmailService interface {
 type MailerConfig struct {
 	Host                       string
 	Port                       int
+	ConnectionPoolSize         int
 	Username, Password, Sender string
 	UpdateInterval             time.Duration
 }
@@ -47,18 +51,22 @@ func NewMailerService(
 ) *mailer {
 	dialer := mail.NewDialer(cfg.Host, cfg.Port, cfg.Username, cfg.Password)
 	dialer.Timeout = DialerTimeout
+
+	cfg.ConnectionPoolSize = int(math.Min(MaxConcurrentSMTPConn, float64(cfg.ConnectionPoolSize)))
+
 	return &mailer{
-		dialer:         dialer,
-		sender:         cfg.Sender,
-		emailService:   emailService,
-		rateService:    rateService,
-		updateInterval: cfg.UpdateInterval,
-		stopChan:       make(chan bool),
+		dialer:             dialer,
+		sender:             cfg.Sender,
+		emailService:       emailService,
+		rateService:        rateService,
+		stopChan:           make(chan bool),
+		connectionPoolSize: cfg.ConnectionPoolSize,
+		currencyTemplates:  make(map[string]string),
 	}
 }
 
-func (m *mailer) StartEmailSending() {
-	ticker := time.NewTicker(m.updateInterval)
+func (m *mailer) StartEmailSending(updateInterval time.Duration) {
+	ticker := time.NewTicker(updateInterval)
 	go func() {
 		for {
 			select {
@@ -80,16 +88,11 @@ func (m *mailer) StopEmailSending() {
 }
 
 func (m *mailer) sendEmails() error {
-	message := mail.NewMessage()
-	sender, err := m.dialer.Dial()
-	if err != nil {
-		return err
-	}
 	rate, err := m.rateService.GetRate(context.Background(), "usd")
 	if err != nil {
 		return err
 	}
-	err = m.renderCurrencyMessage(rate, message)
+	err = m.executeCurrencyTemplates(rate)
 	if err != nil {
 		return err
 	}
@@ -98,38 +101,57 @@ func (m *mailer) sendEmails() error {
 		return err
 	}
 
-	var sendingError error
-	for _, email := range emails {
-		message.SetHeader("To", email)
-		err = mail.Send(sender, message)
-		if err != nil {
-			sendingError = err
+	messagesChan := make(chan *mail.Message)
+	errorsChan := make(chan error)
+	wg := &sync.WaitGroup{}
+
+	// setup connection pool.
+	for i := 0; i < m.connectionPoolSize; i++ {
+		wg.Add(1)
+		go emailWorker(messagesChan, errorsChan, m.dialer, wg)
+	}
+	go func() {
+		wg.Wait()
+		close(errorsChan)
+	}()
+
+	go func() {
+		for err := range errorsChan {
+			log.Error().Err(err).Send()
 		}
-		message.Reset()
+	}()
+
+	for _, email := range emails {
+		messagesChan <- m.createCurrencyUpdateMessage(email)
 	}
-	if sendingError != nil {
-		return sendingError
-	}
-	return sender.Close()
+	close(messagesChan)
+	return nil
 }
 
-func (m *mailer) renderCurrencyMessage(data float32, message *mail.Message) error {
+func (m *mailer) createCurrencyUpdateMessage(to string) *mail.Message {
+	message := mail.NewMessage()
+	message.SetHeader("From", m.sender)
+	message.SetHeader("To", to)
+	message.SetHeader("Subject", m.currencyTemplates["subject"])
+	message.SetBody("text/plain", m.currencyTemplates["plainBody"])
+	message.AddAlternative("text/html", m.currencyTemplates["htmlBody"])
+	return message
+}
+
+func (m *mailer) executeCurrencyTemplates(data float32) error {
 	tmpl, err := template.New("email").Parse(templates.MessageTemplate)
 	if err != nil {
 		return err
 	}
-	message.SetHeader("From", m.sender)
-
-	headers := map[string]string{"subject": "Subject", "plainBody": "text/plain", "htmlBody": "text/html"}
+	templateNames := []string{"subject", "plainBody", "htmlBody"}
 	templateBuffer := new(bytes.Buffer)
-	for templateName, header := range headers {
-		err = tmpl.ExecuteTemplate(templateBuffer, templateName, data)
+	for _, templatesName := range templateNames {
+		err = tmpl.ExecuteTemplate(templateBuffer, templatesName, data)
 		if err != nil {
 			return err
 		}
-		message.SetHeader(header, templateBuffer.String())
+		m.currencyTemplates[templatesName] = templateBuffer.String()
 		templateBuffer.Reset()
 	}
-
 	return nil
 }
