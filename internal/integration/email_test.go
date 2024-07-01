@@ -21,7 +21,7 @@ type EmailServiceSuite struct {
 
 func (em *EmailServiceSuite) SetupSuite() {
 	t := em.T()
-	container, err := createTestDBContainer()
+	container, err := CreateTestDBContainer()
 	if err != nil {
 		t.Fatal(err)
 	}
