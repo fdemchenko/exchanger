@@ -1,15 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	"github.com/stretchr/testify/assert"
 )
+
+type RateResponse struct {
+	Rate float32 `json:"rate"`
+}
 
 func TestRateEndpointIntegration(t *testing.T) {
 	if testing.Short() {
@@ -44,7 +48,11 @@ func TestRateEndpointIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rate, err := strconv.ParseFloat(string(body), 32)
-	assert.NoError(t, err)
-	assert.Greater(t, rate, float64(0))
+	var rateResponse RateResponse
+	err = json.Unmarshal(body, &rateResponse)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Greater(t, rateResponse.Rate, float32(0))
 }
