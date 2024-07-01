@@ -24,6 +24,8 @@ type RateResponse struct {
 	Rate float32 `json:"rate"`
 }
 
+const EmailContentType = "application/x-www-form-urlencoded"
+
 func TestRateEndpointIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -106,7 +108,7 @@ func (sets *SubscribeEndpointTestSuite) TestSubscribe_Success() {
 	data := url.Values{}
 	data.Set("email", "someemail@gmail.com")
 	encodedData := data.Encode()
-	resp, err := client.Post(sets.testServer.URL+"/subscribe", "application/x-www-form-urlencoded", strings.NewReader(encodedData))
+	resp, err := client.Post(sets.testServer.URL+"/subscribe", EmailContentType, strings.NewReader(encodedData))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +123,7 @@ func (sets *SubscribeEndpointTestSuite) TestSubscribe_InvalidEmail() {
 	data := url.Values{}
 	data.Set("email", "some^!invalid@@gmail_com")
 	encodedData := data.Encode()
-	resp, err := client.Post(sets.testServer.URL+"/subscribe", "application/x-www-form-urlencoded", strings.NewReader(encodedData))
+	resp, err := client.Post(sets.testServer.URL+"/subscribe", EmailContentType, strings.NewReader(encodedData))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,14 +138,14 @@ func (sets *SubscribeEndpointTestSuite) TestSubscribe_DuplicateEmail() {
 	data := url.Values{}
 	data.Set("email", "mail@mail.com")
 	encodedData := data.Encode()
-	resp, err := client.Post(sets.testServer.URL+"/subscribe", "application/x-www-form-urlencoded", strings.NewReader(encodedData))
+	resp, err := client.Post(sets.testServer.URL+"/subscribe", EmailContentType, strings.NewReader(encodedData))
 	if err != nil {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	resp, err = client.Post(sets.testServer.URL+"/subscribe", "application/x-www-form-urlencoded", strings.NewReader(encodedData))
+	resp, err = client.Post(sets.testServer.URL+"/subscribe", EmailContentType, strings.NewReader(encodedData))
 	if err != nil {
 		t.Fatal(err)
 	}

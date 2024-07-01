@@ -105,7 +105,11 @@ func initConfig() config {
 	flag.StringVar(&cfg.mailer.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
 	flag.StringVar(&cfg.mailer.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
 	flag.StringVar(&cfg.mailer.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
-	flag.IntVar(&cfg.mailer.ConnectionPoolSize, "mailer-connections", DefaultMailerConnectionPoolSize, "Mailer connection pool size")
+	flag.IntVar(&cfg.mailer.ConnectionPoolSize,
+		"mailer-connections",
+		DefaultMailerConnectionPoolSize,
+		"Mailer connection pool size",
+	)
 	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
 		if s == "" {
 			cfg.mailer.UpdateInterval = DefaultMailerInterval
