@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
+	"github.com/fdemchenko/exchanger/internal/services/mailer"
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
@@ -21,25 +23,36 @@ type config struct {
 		dsn            string
 		maxConnections int
 	}
-	mailer services.MailerConfig
+	mailer mailer.MailerConfig
+}
+
+type RateService interface {
+	GetRate(context.Context, string) (float32, error)
+}
+
+type EmailService interface {
+	Create(email string) error
+	GetAll() ([]string, error)
 }
 
 type application struct {
 	cfg          config
-	rateService  services.RateService
-	emailService services.EmailService
+	rateService  RateService
+	emailService EmailService
 }
 
 const (
-	DefaultSMTPPort         = 25
-	ServerTimeout           = 10 * time.Second
-	DefaultMaxDBConnections = 25
-	DefaultMailerInterval   = 24 * time.Hour
-	RateCachingDuration     = 15 * time.Minute
+	DefaultSMTPPort                 = 25
+	ServerTimeout                   = 10 * time.Second
+	DefaultMaxDBConnections         = 25
+	DefaultMailerInterval           = 24 * time.Hour
+	RateCachingDuration             = 15 * time.Minute
+	DefaultMailerConnectionPoolSize = 3
 )
 
 func main() {
 	cfg := initConfig()
+
 	zerolog.TimeFieldFormat = time.RFC3339
 
 	db, err := openDB(cfg)
@@ -64,8 +77,8 @@ func main() {
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
-	mailerService := services.NewMailerService(cfg.mailer, emailService, rateService)
-	mailerService.StartBackgroundTask()
+	mailerService := mailer.NewMailerService(cfg.mailer, emailService, rateService)
+	mailerService.StartEmailSending(cfg.mailer.UpdateInterval)
 
 	app := application{
 		cfg:          cfg,
@@ -82,6 +95,7 @@ func main() {
 
 func initConfig() config {
 	var cfg config
+	cfg.mailer.UpdateInterval = DefaultMailerInterval
 	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
@@ -91,6 +105,7 @@ func initConfig() config {
 	flag.StringVar(&cfg.mailer.Username, "smtp-username", os.Getenv("EXCHANGER_SMPT_USERNAME"), "Smpt username")
 	flag.StringVar(&cfg.mailer.Password, "smtp-password", os.Getenv("EXCHANGER_SMPT_PASSWORD"), "Smpt password")
 	flag.StringVar(&cfg.mailer.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMPT_SENDER"), "Smpt sender")
+	flag.IntVar(&cfg.mailer.ConnectionPoolSize, "mailer-connections", DefaultMailerConnectionPoolSize, "Mailer connection pool size")
 	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
 		if s == "" {
 			cfg.mailer.UpdateInterval = DefaultMailerInterval
