@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"flag"
-	"net/http"
 	"os"
 	"time"
 
@@ -97,15 +96,11 @@ func main() {
 		emailService: emailService,
 	}
 
-	server := http.Server{
-		Handler:           app.routes(),
-		Addr:              app.cfg.addr,
-		WriteTimeout:      ServerTimeout,
-		ReadHeaderTimeout: ServerTimeout,
-	}
-
 	log.Info().Str("address", app.cfg.addr).Msg("Web server started")
-	log.Fatal().Err(server.ListenAndServe()).Send()
+	err = app.serveHTTP()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 }
 
 func openDB(cfg config) (*sql.DB, error) {
