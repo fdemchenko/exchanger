@@ -98,7 +98,6 @@ func main() {
 
 	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, queue.Name)
 	emailScheduler.StartBackhroundTask(cfg.mailerUpdateInterval)
-	defer emailScheduler.StopBackgroundTask()
 
 	app := application{
 		cfg:          cfg,
