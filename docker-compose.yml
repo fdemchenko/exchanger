@@ -1,4 +1,15 @@
 services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3
+    restart: always
+    ports:
+      - 5672:5672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 15s
+      timeout: 15s
+      retries: 3
   db:
     image: postgres:14.1-alpine
     container_name: exchanger_db
@@ -17,6 +28,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  mailer:
+    container_name: mailer-service
+    build:
+      context: ./
+      dockerfile: ./cmd/mailer/Dockerfile
+    environment:
+      - EXCHANGER_SMTP_HOST=smtp.example.host
+      - EXCHANGER_SMTP_PORT=25
+      - EXCHANGER_SMTP_USERNAME=smtpexmapleuser
+      - EXCHANGER_SMTP_PASSWORD=secretpasword
+      - EXCHANGER_SMTP_SENDER=exchangerteam@rate.com
+      - EXCHANGER_RABBITMQ_CONN_STRING=amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        
   api:
     container_name: exchanger-api
     build:
@@ -25,15 +52,13 @@ services:
     depends_on:
       db:
         condition: service_healthy  
+      rabbitmq:
+        condition: service_healthy
     ports:
       - 8080:8080
     environment:
       - EXCHANGER_DSN=postgres://exchanger:pa55word@exchanger_db/exchanger?sslmode=disable
-      - EXCHANGER_SMTP_HOST=smtp.example.host
-      - EXCHANGER_SMTP_PORT=25
-      - EXCHANGER_SMTP_USERNAME=smtpexmapleuser
-      - EXCHANGER_SMTP_PASSWORD=secretpasword
-      - EXCHANGER_SMTP_SENDER=exchangerteam@rate.com
+      - EXCHANGER_RABBITMQ_CONN_STRING=amqp://guest:guest@rabbitmq:5672
     links:
       - db
 volumes:
