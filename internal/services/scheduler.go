@@ -93,7 +93,6 @@ func (es *RabbitMQEmailScheduler) sendMessages() error {
 	}
 
 	for _, email := range emails {
-		log.Print(email)
 		sendEmailMessage := mailer.Message[string]{
 			MessageHeader: mailer.MessageHeader{Type: mailer.SendEmailNotification, Timestamp: time.Now()},
 			Payload:       email,
