@@ -12,6 +12,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/services"
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -23,6 +24,7 @@ type config struct {
 		maxConnections int
 	}
 	mailerUpdateInterval time.Duration
+	rabbitMQConnString   string
 }
 
 type RateService interface {
@@ -63,6 +65,26 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
+	conn, err := amqp.Dial(cfg.rabbitMQConnString)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	queue, err := ch.QueueDeclare(
+		"emails",
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 	emailRepository := &repositories.PostgresEmailRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
 	rateService := rate.NewRateService(
@@ -73,6 +95,10 @@ func main() {
 		),
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
+
+	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, queue.Name)
+	emailScheduler.StartBackhroundTask(cfg.mailerUpdateInterval)
+	defer emailScheduler.StopBackgroundTask()
 
 	app := application{
 		cfg:          cfg,
@@ -93,6 +119,11 @@ func initConfig() config {
 	flag.StringVar(&cfg.addr, "addr", ":8080", "http listen address")
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
+	flag.StringVar(&cfg.rabbitMQConnString,
+		"rabbitmq-conn-string",
+		os.Getenv("EXCHANGER_RABBITMQ_CONN_STRING"),
+		"RabbitMQ connection string",
+	)
 
 	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
 		if s == "" {
