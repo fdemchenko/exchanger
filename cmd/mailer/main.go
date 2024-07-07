@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
-	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,32 +16,16 @@ const (
 )
 
 func main() {
-	conn, err := amqp.Dial(ServiceConfig.RabbitMQConnString)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	ch, err := conn.Channel()
+	ch, err := rabbitmq.OpenWithQueueName(ServiceConfig.RabbitMQConnString, mailer.QueueName)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
-	queue, err := ch.QueueDeclare(
-		"emails",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+	deliveries, err := ch.Consume(mailer.QueueName, "", true, false, false, false, nil)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-
-	deliveries, err := ch.Consume(queue.Name, "", true, false, false, false, nil)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	log.Info().Str("name", queue.Name).Msg("Mialer service started")
+	log.Info().Msg("Mialer service started")
 
 	mailerService := NewMailerService(ServiceConfig.SMTP)
 	mailerService.StartWorkers(ServiceConfig.SMTP.ConnectionPoolSize)

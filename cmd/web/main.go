@@ -7,12 +7,13 @@ import (
 	"os"
 	"time"
 
+	"github.com/fdemchenko/exchanger/internal/communication/mailer"
+	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	_ "github.com/lib/pq"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -65,23 +66,7 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	conn, err := amqp.Dial(cfg.rabbitMQConnString)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-
-	queue, err := ch.QueueDeclare(
-		"emails",
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
+	ch, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, mailer.QueueName)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -96,7 +81,7 @@ func main() {
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
-	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, queue.Name)
+	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, mailer.QueueName)
 	emailScheduler.StartBackhroundTask(cfg.mailerUpdateInterval)
 
 	app := application{
