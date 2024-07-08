@@ -37,7 +37,7 @@ func main() {
 			continue
 		}
 
-		log.Debug().Str("message type", message.Type.String()).
+		log.Debug().Str("message type", string(message.Type)).
 			Time("timestamp", message.Timestamp).
 			Msg("New message received")
 
