@@ -5,6 +5,7 @@ import "strings"
 type EmailRepository interface {
 	Insert(email string) error
 	GetAll() ([]string, error)
+	Delete(email string) error
 }
 
 type emailServiceImpl struct {
@@ -23,4 +24,10 @@ func (es *emailServiceImpl) Create(email string) error {
 
 func (es *emailServiceImpl) GetAll() ([]string, error) {
 	return es.emailRepository.GetAll()
+}
+
+func (es *emailServiceImpl) Delete(email string) error {
+	// email is case insensitive
+	email = strings.ToLower(email)
+	return es.emailRepository.Delete(email)
 }

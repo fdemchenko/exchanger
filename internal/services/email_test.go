@@ -24,6 +24,10 @@ func (er *EmailRepositoryMock) Insert(email string) error {
 	return nil
 }
 
+func (er *EmailRepositoryMock) Delete(email string) error {
+	return nil
+}
+
 func TestEmailService_CreateEmails(t *testing.T) {
 	emailRepo := new(EmailRepositoryMock)
 	emails := []string{"example@mail.com", "school@edu.ua"}

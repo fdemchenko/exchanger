@@ -49,3 +49,20 @@ func (em *PostgresEmailRepository) GetAll() ([]string, error) {
 
 	return emails, nil
 }
+
+func (em *PostgresEmailRepository) Delete(email string) error {
+	query := `DELETE FROM emails WHERE email = $1`
+
+	result, err := em.DB.Exec(query, email)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrEmailDoesNotExist
+	}
+	return nil
+}

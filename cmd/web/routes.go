@@ -13,6 +13,7 @@ func (app *application) routes() http.Handler {
 
 	mux.HandleFunc("GET /rate", app.getRate)
 	mux.HandleFunc("POST /subscribe", app.subscribe)
+	mux.HandleFunc("POST /unsubscribe", app.unsubscribe)
 
 	return app.recoveryMiddleware(app.loggingMiddleware(app.secureHeadersMiddleware(mux)))
 }
@@ -48,6 +49,24 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, repositories.ErrDuplicateEmail) {
 			app.clientError(w, http.StatusConflict)
+			return
+		}
+		app.serverError(w, err)
+	}
+}
+
+func (app *application) unsubscribe(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	email := r.PostForm.Get("email")
+	err = app.emailService.Delete(email)
+	if err != nil {
+		if errors.Is(err, repositories.ErrEmailDoesNotExist) {
+			app.clientError(w, http.StatusNotFound)
 			return
 		}
 		app.serverError(w, err)

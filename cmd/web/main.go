@@ -35,6 +35,7 @@ type RateService interface {
 type EmailService interface {
 	Create(email string) error
 	GetAll() ([]string, error)
+	Delete(email string) error
 }
 
 type application struct {
