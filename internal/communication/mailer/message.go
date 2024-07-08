@@ -20,3 +20,11 @@ type Message[T any] struct {
 	MessageHeader
 	Payload T `json:"payload"`
 }
+
+type ExchangeRateUpdatedEvent struct {
+	Rate float32 `json:"rate"`
+}
+
+type SendEmailNotificationCommand struct {
+	Email string `json:"email"`
+}

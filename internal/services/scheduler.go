@@ -69,9 +69,9 @@ func (es *RabbitMQEmailScheduler) sendMessages() error {
 	if err != nil {
 		return err
 	}
-	rateUpdateMessage := mailer.Message[float32]{
+	rateUpdateMessage := mailer.Message[mailer.ExchangeRateUpdatedEvent]{
 		MessageHeader: mailer.MessageHeader{Type: mailer.ExchangeRateUpdated, Timestamp: time.Now()},
-		Payload:       rate,
+		Payload:       mailer.ExchangeRateUpdatedEvent{Rate: rate},
 	}
 	bytes, err := json.Marshal(rateUpdateMessage)
 	if err != nil {
@@ -93,9 +93,9 @@ func (es *RabbitMQEmailScheduler) sendMessages() error {
 	}
 
 	for _, email := range emails {
-		sendEmailMessage := mailer.Message[string]{
+		sendEmailMessage := mailer.Message[mailer.SendEmailNotificationCommand]{
 			MessageHeader: mailer.MessageHeader{Type: mailer.SendEmailNotification, Timestamp: time.Now()},
-			Payload:       email,
+			Payload:       mailer.SendEmailNotificationCommand{Email: email},
 		}
 		bytes, err := json.Marshal(sendEmailMessage)
 		if err != nil {

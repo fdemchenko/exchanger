@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"strconv"
 	"text/template"
 
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
@@ -82,20 +81,22 @@ func (ms *MailerService) sendEmail(to string) {
 func (ms *MailerService) HandleMessage(message mailer.Message[json.RawMessage]) error {
 	switch message.Type {
 	case mailer.ExchangeRateUpdated:
-		rate64, err := strconv.ParseFloat(string(message.Payload), 32)
+		updateEvent := mailer.ExchangeRateUpdatedEvent{}
+		err := json.Unmarshal(message.Payload, &updateEvent)
 		if err != nil {
 			return err
 		}
-		err = ms.updateCurrencyRateTemplates(float32(rate64))
+		err = ms.updateCurrencyRateTemplates(updateEvent.Rate)
 		if err != nil {
 			return err
 		}
 	case mailer.SendEmailNotification:
-		email, err := strconv.Unquote(string(message.Payload))
+		sendCommand := mailer.SendEmailNotificationCommand{}
+		err := json.Unmarshal(message.Payload, &sendCommand)
 		if err != nil {
 			return err
 		}
-		ms.sendEmail(email)
+		ms.sendEmail(sendCommand.Email)
 	default:
 		return errors.New("unknown message type")
 	}
