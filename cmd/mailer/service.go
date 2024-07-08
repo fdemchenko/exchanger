@@ -2,9 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"math"
+	"strconv"
 	"text/template"
 
+	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
 	"github.com/rs/zerolog/log"
@@ -44,7 +48,7 @@ func NewMailerService(
 	}
 }
 
-func (ms *MailerService) UpdateCurrencyRateTemplates(rate float32) error {
+func (ms *MailerService) updateCurrencyRateTemplates(rate float32) error {
 	templateNames := []string{"subject", "plainBody", "htmlBody"}
 	templateBuffer := new(bytes.Buffer)
 	for _, templatesName := range templateNames {
@@ -64,7 +68,7 @@ func (ms *MailerService) StartWorkers(connectionPoolSize int) {
 	}
 }
 
-func (ms *MailerService) SendEmail(to string) {
+func (ms *MailerService) sendEmail(to string) {
 	message := mail.NewMessage()
 	message.SetHeader("From", ms.sender)
 	message.SetHeader("To", to)
@@ -73,4 +77,27 @@ func (ms *MailerService) SendEmail(to string) {
 	message.AddAlternative("text/html", ms.currencyTemplates["htmlBody"])
 
 	ms.jobsChan <- message
+}
+
+func (ms *MailerService) HandleMessage(message mailer.Message[json.RawMessage]) error {
+	switch message.Type {
+	case mailer.ExchangeRateUpdated:
+		rate64, err := strconv.ParseFloat(string(message.Payload), 32)
+		if err != nil {
+			return err
+		}
+		err = ms.updateCurrencyRateTemplates(float32(rate64))
+		if err != nil {
+			return err
+		}
+	case mailer.SendEmailNotification:
+		email, err := strconv.Unquote(string(message.Payload))
+		if err != nil {
+			return err
+		}
+		ms.sendEmail(email)
+	default:
+		return errors.New("unknown message type")
+	}
+	return nil
 }

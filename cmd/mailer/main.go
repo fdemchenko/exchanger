@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"strconv"
 
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
@@ -42,29 +41,9 @@ func main() {
 			Time("timestamp", message.Timestamp).
 			Msg("New message received")
 
-		ParseMessageType(mailerService, message)
-	}
-}
-
-func ParseMessageType(mailerService *MailerService, message mailer.Message[json.RawMessage]) {
-	switch message.Type {
-	case mailer.ExchangeRateUpdated:
-		rate64, err := strconv.ParseFloat(string(message.Payload), 32)
-		if err != nil {
-			log.Error().Err(err).Msg("Cannot parse rate message payload")
-		}
-		err = mailerService.UpdateCurrencyRateTemplates(float32(rate64))
+		err = mailerService.HandleMessage(message)
 		if err != nil {
 			log.Error().Err(err).Send()
 		}
-	case mailer.SendEmailNotification:
-		email, err := strconv.Unquote(string(message.Payload))
-		if err != nil {
-			log.Error().Err(err).Send()
-			return
-		}
-		mailerService.SendEmail(email)
-	default:
-		log.Error().Msg("Unknown message type")
 	}
 }
