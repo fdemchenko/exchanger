@@ -13,6 +13,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
 	"github.com/fdemchenko/exchanger/internal/services/rate"
+	"github.com/fdemchenko/exchanger/migrations"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -62,7 +63,7 @@ func main() {
 	}
 	log.Info().Msg("Coonected to DB successfully")
 
-	err = database.AutoMigrate(db, false)
+	err = database.AutoMigrate(db, migrations.RatesMigrationsFS, "rates", "exchanger", false)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
