@@ -15,7 +15,7 @@ func OpenWithQueueName(connectionString string, queueName string) (*amqp.Channel
 	}
 
 	_, err = ch.QueueDeclare(
-		"emails",
+		queueName,
 		false,
 		false,
 		false,
