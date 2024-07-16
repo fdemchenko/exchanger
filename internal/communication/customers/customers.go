@@ -17,7 +17,7 @@ const (
 
 type CreateCustomerRequestPayload struct {
 	Email          string `json:"email"`
-	SubscriptionID int    `json:"int"`
+	SubscriptionID int    `json:"id"`
 }
 
 type CustomerCreatedPayload struct {
@@ -25,5 +25,6 @@ type CustomerCreatedPayload struct {
 }
 
 type CustomerCreationFailedPayload struct {
-	Error string `json:"error"`
+	Error          string `json:"error"`
+	SubscriptionID int    `json:"id"`
 }
