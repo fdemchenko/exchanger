@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"os"
 	"time"
@@ -58,7 +57,7 @@ func main() {
 
 	zerolog.TimeFieldFormat = time.RFC3339
 
-	db, err := openDB(cfg)
+	db, err := database.OpenDB(cfg.db.dsn, database.Options{MaxOpenConnections: cfg.db.maxConnections})
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -126,18 +125,4 @@ func initConfig() config {
 	})
 	flag.Parse()
 	return cfg
-}
-
-func openDB(cfg config) (*sql.DB, error) {
-	db, err := sql.Open("postgres", cfg.db.dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Ping()
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(cfg.db.maxConnections)
-	return db, nil
 }
