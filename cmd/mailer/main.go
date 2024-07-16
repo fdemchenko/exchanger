@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/fdemchenko/exchanger/internal/communication"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/rs/zerolog/log"
@@ -30,7 +31,7 @@ func main() {
 	mailerService.StartWorkers(ServiceConfig.SMTP.ConnectionPoolSize)
 
 	for delivery := range deliveries {
-		message := mailer.Message[json.RawMessage]{}
+		message := communication.Message[json.RawMessage]{}
 		err := json.Unmarshal(delivery.Body, &message)
 		if err != nil {
 			log.Error().Err(err).Send()

@@ -7,6 +7,7 @@ import (
 	"math"
 	"text/template"
 
+	"github.com/fdemchenko/exchanger/internal/communication"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
@@ -78,7 +79,7 @@ func (ms *MailerService) sendEmail(to string) {
 	ms.jobsChan <- message
 }
 
-func (ms *MailerService) HandleMessage(message mailer.Message[json.RawMessage]) error {
+func (ms *MailerService) HandleMessage(message communication.Message[json.RawMessage]) error {
 	switch message.Type {
 	case mailer.ExchangeRateUpdated:
 		updateEvent := mailer.ExchangeRateUpdatedEvent{}
