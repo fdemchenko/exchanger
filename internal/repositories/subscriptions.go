@@ -12,22 +12,28 @@ type PostgresSubscriptionRepository struct {
 	DB *sql.DB
 }
 
-func (em *PostgresSubscriptionRepository) Insert(email string) error {
-	stmt := `INSERT INTO subscriptions (email) VALUES ($1)`
+func (em *PostgresSubscriptionRepository) Insert(email string) (int, error) {
+	stmt := `INSERT INTO subscriptions (email) VALUES ($1) RETURNING id`
 
-	_, err := em.DB.Exec(stmt, email)
-	if err != nil {
+	var id int
+	row := em.DB.QueryRow(stmt, email)
+	if row.Err() != nil {
 		var pgError *pq.Error
-		if errors.As(err, &pgError) {
+		if errors.As(row.Err(), &pgError) {
 			// unique constraint error
 			if pgError.Code == pq.ErrorCode(PostgreSQLUniqueViolationErrorCode) &&
 				strings.Contains(pgError.Message, "sunscriptions_email_key") {
-				return ErrDuplicateEmail
+				return 0, ErrDuplicateEmail
 			}
 		}
-		return err
+		return 0, row.Err()
 	}
-	return nil
+	err := row.Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
 func (em *PostgresSubscriptionRepository) GetAll() ([]string, error) {
