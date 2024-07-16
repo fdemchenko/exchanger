@@ -44,6 +44,19 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+  customers:
+    container_name: customers-service
+    build:
+      context: ./
+      dockerfile: ./cmd/customers/Dockerfile
+    environment:
+      - EXCHANGER_RABBITMQ_CONN_STRING=amqp://guest:guest@rabbitmq:5672
+      - EXCHANGER_CUSTOMERS_DSN=postgres://customers_service:pa55word@exchanger_db/customers_service?sslmode=disable
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
         
   api:
     container_name: exchanger-api
