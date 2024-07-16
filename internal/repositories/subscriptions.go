@@ -22,7 +22,7 @@ func (em *PostgresSubscriptionRepository) Insert(email string) (int, error) {
 		if errors.As(row.Err(), &pgError) {
 			// unique constraint error
 			if pgError.Code == pq.ErrorCode(PostgreSQLUniqueViolationErrorCode) &&
-				strings.Contains(pgError.Message, "sunscriptions_email_key") {
+				strings.Contains(pgError.Message, "subscriptions_email_key") {
 				return 0, ErrDuplicateEmail
 			}
 		}

@@ -27,7 +27,7 @@ const DefaultMaxDBConnections = 10
 
 func main() {
 	var cfg config
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_DSN"), "Data source name")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_CUSTOMERS_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxOpenConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
 	flag.StringVar(&cfg.rabbitMQConnString,
 		"rabbitmq-conn-string",
@@ -61,8 +61,10 @@ func main() {
 	producer := rabbitmq.NewGenericProducer(responcesChannel)
 	consumer := messaging.NewCustomerCreationConsumer(requestsChannel, customersRepository, producer)
 
+	forever := make(chan bool)
 	err = consumer.StartListening()
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+	<-forever
 }
