@@ -92,7 +92,7 @@ func (sets *SubscribeEndpointTestSuite) SetupSuite() {
 		t.Fatal(err)
 	}
 
-	postgresRepo := &repositories.PostgresEmailRepository{DB: db}
+	postgresRepo := &repositories.PostgresSubscriptionRepository{DB: db}
 	emailService := services.NewEmailService(postgresRepo)
 
 	app := application{

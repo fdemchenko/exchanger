@@ -36,7 +36,8 @@ type RateService interface {
 type EmailService interface {
 	Create(email string) error
 	GetAll() ([]string, error)
-	Delete(email string) error
+	DeleteByEmail(email string) error
+	DeleteByID(id int) error
 }
 
 type application struct {
@@ -72,7 +73,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	emailRepository := &repositories.PostgresEmailRepository{DB: db}
+	emailRepository := &repositories.PostgresSubscriptionRepository{DB: db}
 	emailService := services.NewEmailService(emailRepository)
 	rateService := rate.NewRateService(
 		rate.WithFetchers(

@@ -63,7 +63,7 @@ func (app *application) unsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	email := r.PostForm.Get("email")
-	err = app.emailService.Delete(email)
+	err = app.emailService.DeleteByEmail(email)
 	if err != nil {
 		if errors.Is(err, repositories.ErrEmailDoesNotExist) {
 			app.clientError(w, http.StatusNotFound)

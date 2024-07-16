@@ -40,7 +40,7 @@ func (em *EmailServiceSuite) SetupSuite() {
 		t.Fatal(err)
 	}
 
-	repo := &repositories.PostgresEmailRepository{DB: db}
+	repo := &repositories.PostgresSubscriptionRepository{DB: db}
 	em.emailService = services.NewEmailService(repo)
 }
 

@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS emails;
+DROP TABLE IF EXISTS subscriptions;
