@@ -74,7 +74,8 @@ func (ccsc *customerCreationSAGAConsumer) handleDelivery(delivery amqp.Delivery)
 		}
 		// compensate
 		err = ccsc.subscriptionRepository.DeleteByID(request.SubscriptionID)
-		log.Error().Int("subscription_id", request.SubscriptionID).Msg("Failed to create customer, running compensate transaction")
+		log.Error().Int("subscription_id", request.SubscriptionID).
+			Msg("Failed to create customer, running compensate transaction")
 		if err != nil {
 			log.Error().Err(err).Msg("Compensation transaction failed")
 		}

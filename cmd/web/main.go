@@ -91,7 +91,10 @@ func main() {
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
-	checkCustomersCreationChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerResponseQueue)
+	checkCustomersCreationChannel, err := rabbitmq.OpenWithQueueName(
+		cfg.rabbitMQConnString,
+		customers.CreateCustomerResponseQueue,
+	)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
