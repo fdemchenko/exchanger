@@ -5,7 +5,7 @@ import (
 )
 
 type SubscriptonsRepository interface {
-	Insert(email string) error
+	Insert(email string) (int, error)
 	GetAll() ([]string, error)
 	DeleteByEmail(email string) error
 	DeleteByID(id int) error
@@ -15,11 +15,15 @@ type subscriptionServiceImpl struct {
 	subscriptionsRepository SubscriptonsRepository
 }
 
-func NewEmailService(subscriptionRepository SubscriptonsRepository) *subscriptionServiceImpl {
-	return &subscriptionServiceImpl{subscriptionsRepository: subscriptionRepository}
+func NewSubscriptionService(
+	subscriptionRepository SubscriptonsRepository,
+) *subscriptionServiceImpl {
+	return &subscriptionServiceImpl{
+		subscriptionsRepository: subscriptionRepository,
+	}
 }
 
-func (ss *subscriptionServiceImpl) Create(email string) error {
+func (ss *subscriptionServiceImpl) Create(email string) (int, error) {
 	// email is case insensitive
 	email = strings.ToLower(email)
 	return ss.subscriptionsRepository.Insert(email)

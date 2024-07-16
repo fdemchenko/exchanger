@@ -16,7 +16,7 @@ type RateService interface {
 }
 
 type EmailService interface {
-	Create(email string) error
+	Create(email string) (int, error)
 	GetAll() ([]string, error)
 }
 
