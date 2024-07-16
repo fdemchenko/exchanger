@@ -5,6 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/fdemchenko/exchanger/cmd/customers/internal/data"
+	"github.com/fdemchenko/exchanger/cmd/customers/internal/messaging"
+	"github.com/fdemchenko/exchanger/internal/communication/customers"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/migrations"
@@ -39,12 +42,26 @@ func main() {
 	}
 	log.Info().Msg("Coonected to DB successfully")
 
-	err = database.AutoMigrate(db, migrations.RatesMigrationsFS, "rates", "exchanger", false)
+	err = database.AutoMigrate(db, migrations.CustomersMigrationsFS, "customers", "customers_service", false)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
-	_, _ = rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, "subscribers")
+	requestsChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerRequestQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	responcesChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerResponseQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	customersRepository := &data.CustomerPostgreSQLRepository{DB: db}
+	producer := rabbitmq.NewGenericProducer(responcesChannel)
+	consumer := messaging.NewCustomerCreationConsumer(requestsChannel, customersRepository, producer)
+
+	err = consumer.StartListening()
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
