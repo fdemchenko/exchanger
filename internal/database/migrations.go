@@ -15,7 +15,7 @@ func AutoMigrate(db *sql.DB, migrationsFS fs.FS, migratinsPath string, dbName st
 	if err != nil {
 		return err
 	}
-	source, err := iofs.New(migrationsFS, "migrations")
+	source, err := iofs.New(migrationsFS, migratinsPath)
 	if err != nil {
 		return err
 	}
