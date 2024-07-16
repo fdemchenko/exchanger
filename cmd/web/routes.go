@@ -3,9 +3,13 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
+	"github.com/fdemchenko/exchanger/internal/communication"
+	"github.com/fdemchenko/exchanger/internal/communication/customers"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/validator"
+	"github.com/rs/zerolog/log"
 )
 
 func (app *application) routes() http.Handler {
@@ -45,13 +49,23 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = app.emailService.Create(newEmail)
+	id, err := app.emailService.Create(newEmail)
 	if err != nil {
 		if errors.Is(err, repositories.ErrDuplicateEmail) {
 			app.clientError(w, http.StatusConflict)
 			return
 		}
 		app.serverError(w, err)
+		return
+	}
+
+	msg := communication.Message[customers.CreateCustomerRequestPayload]{
+		MessageHeader: communication.MessageHeader{Type: customers.CreateCustomerRequest, Timestamp: time.Now()},
+		Payload:       customers.CreateCustomerRequestPayload{Email: newEmail, SubscriptionID: id},
+	}
+	err = app.customerProducer.SendMessage(msg, customers.CreateCustomerRequestQueue)
+	if err != nil {
+		log.Error().Err(err).Send()
 	}
 }
 

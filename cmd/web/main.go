@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/fdemchenko/exchanger/cmd/web/internal/messaging"
+	"github.com/fdemchenko/exchanger/internal/communication/customers"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/fdemchenko/exchanger/internal/database"
@@ -33,16 +35,17 @@ type RateService interface {
 }
 
 type EmailService interface {
-	Create(email string) error
+	Create(email string) (int, error)
 	GetAll() ([]string, error)
 	DeleteByEmail(email string) error
 	DeleteByID(id int) error
 }
 
 type application struct {
-	cfg          config
-	rateService  RateService
-	emailService EmailService
+	cfg              config
+	rateService      RateService
+	emailService     EmailService
+	customerProducer *rabbitmq.GenericProducer
 }
 
 const (
@@ -72,8 +75,13 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	emailRepository := &repositories.PostgresSubscriptionRepository{DB: db}
-	emailService := services.NewEmailService(emailRepository)
+	createCustomersChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerRequestQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	customersProducer := rabbitmq.NewGenericProducer(createCustomersChannel)
+	subscriptionRepository := &repositories.PostgresSubscriptionRepository{DB: db}
+	emailService := services.NewSubscriptionService(subscriptionRepository)
 	rateService := rate.NewRateService(
 		rate.WithFetchers(
 			rate.NewNBURateFetcher("nbu fetcher"),
@@ -83,13 +91,29 @@ func main() {
 		rate.WithUpdateInterval(RateCachingDuration),
 	)
 
+	checkCustomersCreationChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerResponseQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
+	customersSAGAConsumer := messaging.NewCustomerCreationSAGAConsumer(
+		checkCustomersCreationChannel,
+		subscriptionRepository,
+	)
+
+	err = customersSAGAConsumer.StartListening()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
 	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, mailer.QueueName)
 	emailScheduler.StartBackhroundTask(cfg.mailerUpdateInterval)
 
 	app := application{
-		cfg:          cfg,
-		rateService:  rateService,
-		emailService: emailService,
+		cfg:              cfg,
+		rateService:      rateService,
+		emailService:     emailService,
+		customerProducer: customersProducer,
 	}
 
 	log.Info().Str("address", app.cfg.addr).Msg("Web server started")
