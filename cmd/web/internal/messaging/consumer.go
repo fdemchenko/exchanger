@@ -29,7 +29,7 @@ func (ccsc *customerCreationSAGAConsumer) StartListening() error {
 	var startingError error
 	go func() {
 		deliveries, err := ccsc.channel.Consume(
-			customers.CreateCustomerRequestQueue,
+			customers.CreateCustomerResponseQueue,
 			"",
 			false, false, false, false, nil,
 		)
