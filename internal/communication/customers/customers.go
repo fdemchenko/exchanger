@@ -2,11 +2,9 @@ package customers
 
 import "github.com/fdemchenko/exchanger/internal/communication"
 
-const QueueName = "emails"
-
 const (
 	CreateCustomerRequestQueue  = "CreateCustomerRequests"
-	CreateCustomerResponseQueue = "CreateCustomerResponces"
+	CreateCustomerResponseQueue = "CreateCustomerResponses"
 )
 
 const (
