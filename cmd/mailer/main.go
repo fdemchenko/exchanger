@@ -1,50 +1,43 @@
 package main
 
 import (
-	"encoding/json"
-
-	"github.com/fdemchenko/exchanger/internal/communication"
+	"github.com/fdemchenko/exchanger/cmd/mailer/internal/config"
+	"github.com/fdemchenko/exchanger/cmd/mailer/internal/messaging"
+	"github.com/fdemchenko/exchanger/cmd/mailer/internal/services"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	DefaultSMTPPort                 = 25
-	DefaultRabbitMQPort             = 5672
 	DefaultMailerConnectionPoolSize = 3
 )
 
 func main() {
-	ch, err := rabbitmq.OpenWithQueueName(ServiceConfig.RabbitMQConnString, mailer.QueueName)
+	cfg := config.LoadConfig()
+	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(cfg.RabbitMQConnString, mailer.RateEmailsQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	emailsTriggersChannel, err := rabbitmq.OpenWithQueueName(cfg.RabbitMQConnString, mailer.TriggerEmailsSendingQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
-	deliveries, err := ch.Consume(mailer.QueueName, "", true, false, false, false, nil)
+	mailerService := services.NewMailerService(cfg.SMTP)
+	mailerService.StartWorkers(cfg.SMTP.ConnectionPoolSize)
+
+	producer := rabbitmq.NewGenericProducer(emailsTriggersChannel)
+	scheduler := services.NewEmailScheduler(producer)
+	scheduler.StartBackhroundTask(cfg.SchedulerInterval)
+
+	forever := make(chan bool)
+	consumer := messaging.NewRateEmailsConsumer(rateEmailsChannel, mailerService)
+	err = consumer.StartListening()
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+
 	log.Info().Msg("Mialer service started")
-
-	mailerService := NewMailerService(ServiceConfig.SMTP)
-	mailerService.StartWorkers(ServiceConfig.SMTP.ConnectionPoolSize)
-
-	for delivery := range deliveries {
-		message := communication.Message[json.RawMessage]{}
-		err := json.Unmarshal(delivery.Body, &message)
-		if err != nil {
-			log.Error().Err(err).Send()
-			continue
-		}
-
-		log.Debug().Str("message type", string(message.Type)).
-			Time("timestamp", message.Timestamp).
-			Msg("New message received")
-
-		err = mailerService.HandleMessage(message)
-		if err != nil {
-			log.Error().Err(err).Send()
-		}
-	}
+	<-forever
 }

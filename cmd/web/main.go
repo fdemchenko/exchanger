@@ -71,10 +71,6 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	ch, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, mailer.QueueName)
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
 	createCustomersChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerRequestQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
@@ -109,8 +105,16 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	emailScheduler := services.NewEmailScheduler(emailService, rateService, ch, mailer.QueueName)
-	emailScheduler.StartBackhroundTask(cfg.mailerUpdateInterval)
+	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, mailer.RateEmailsQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	emailsSender := services.NewRabbitMQEmailSender(emailService, rateService, rateEmailsChannel)
+	triggerConsumer := messaging.NewEmailTriggerConsumer(rateEmailsChannel, emailsSender)
+	err = triggerConsumer.StartListening()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 
 	app := application{
 		cfg:              cfg,

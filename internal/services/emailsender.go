@@ -20,52 +20,25 @@ type EmailService interface {
 	GetAll() ([]string, error)
 }
 
-type RabbitMQEmailScheduler struct {
+type RabbitMQEmailSender struct {
 	emailService EmailService
 	rateService  RateService
 	channel      *amqp.Channel
-	queueName    string
-	stopChan     chan bool
 }
 
-func NewEmailScheduler(
+func NewRabbitMQEmailSender(
 	emailService EmailService,
 	rateService RateService,
 	channel *amqp.Channel,
-	queueName string,
-) *RabbitMQEmailScheduler {
-	return &RabbitMQEmailScheduler{
+) *RabbitMQEmailSender {
+	return &RabbitMQEmailSender{
 		rateService:  rateService,
 		emailService: emailService,
-		stopChan:     make(chan bool),
 		channel:      channel,
-		queueName:    queueName,
 	}
 }
 
-func (es *RabbitMQEmailScheduler) StartBackhroundTask(updateInterval time.Duration) {
-	ticker := time.NewTicker(updateInterval)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				err := es.sendMessages()
-				if err != nil {
-					log.Error().Err(err).Send()
-				}
-			case <-es.stopChan:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
-}
-
-func (es *RabbitMQEmailScheduler) StopBackgroundTask() {
-	es.stopChan <- true
-}
-
-func (es *RabbitMQEmailScheduler) sendMessages() error {
+func (es *RabbitMQEmailSender) SendMessages() error {
 	rate, err := es.rateService.GetRate(context.Background(), "usd")
 	if err != nil {
 		return err
@@ -78,7 +51,7 @@ func (es *RabbitMQEmailScheduler) sendMessages() error {
 	if err != nil {
 		return err
 	}
-	err = es.channel.Publish("", es.queueName, false, false,
+	err = es.channel.Publish("", mailer.RateEmailsQueue, false, false,
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        bytes,
@@ -102,7 +75,7 @@ func (es *RabbitMQEmailScheduler) sendMessages() error {
 		if err != nil {
 			continue
 		}
-		err = es.channel.Publish("", es.queueName, false, false,
+		err = es.channel.Publish("", mailer.RateEmailsQueue, false, false,
 			amqp.Publishing{
 				ContentType: "application/json",
 				Body:        bytes,

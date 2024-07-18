@@ -1,10 +1,11 @@
 services:
   rabbitmq:
     container_name: rabbitmq
-    image: rabbitmq:3
+    image: rabbitmq:3-management
     restart: always
     ports:
       - 5672:5672
+      - 15672:15672
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 15s

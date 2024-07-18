@@ -2,11 +2,13 @@ package mailer
 
 import "github.com/fdemchenko/exchanger/internal/communication"
 
-const QueueName = "emails"
+const RateEmailsQueue = "emails"
+const TriggerEmailsSendingQueue = "email_trigger"
 
 const (
 	ExchangeRateUpdated   communication.MessageType = "ExchangeRateUpdated"
 	SendEmailNotification communication.MessageType = "SendEmailNotification"
+	StartEmailSending     communication.MessageType = "StartEmailSending"
 )
 
 type ExchangeRateUpdatedEvent struct {
