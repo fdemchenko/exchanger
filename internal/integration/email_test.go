@@ -7,15 +7,19 @@ import (
 
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/services"
-	"github.com/fdemchenko/exchanger/internal/services/mailer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
+type EmailService interface {
+	Create(email string) error
+	GetAll() ([]string, error)
+}
+
 type EmailServiceSuite struct {
 	suite.Suite
-	emailService mailer.EmailService
+	emailService EmailService
 	container    *postgres.PostgresContainer
 }
 
