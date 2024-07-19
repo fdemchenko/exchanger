@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/fdemchenko/exchanger/cmd/customers/internal/data"
@@ -68,10 +70,21 @@ func main() {
 	producer := rabbitmq.NewGenericProducer(responcesChannel)
 	consumer := messaging.NewCustomerCreationConsumer(requestsChannel, customersRepository, producer)
 
-	forever := make(chan bool)
+	log.Info().Msg("Mialer service started")
 	err = consumer.StartListening()
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	<-forever
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	if err := rabbitMQConn.Close(); err != nil {
+		log.Error().Err(err).Msg("Cannot close RabbitMQ connection")
+	}
+
+	if err := db.Close(); err != nil {
+		log.Error().Err(err).Msg("Cannot close DB connection")
+	}
 }

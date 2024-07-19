@@ -135,6 +135,14 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+
+	if err := rabbitMQConn.Close(); err != nil {
+		log.Error().Err(err).Msg("Cannot close RabbitMQ connection")
+	}
+
+	if err := db.Close(); err != nil {
+		log.Error().Err(err).Msg("Cannot close DB connection")
+	}
 }
 
 func initConfig() config {

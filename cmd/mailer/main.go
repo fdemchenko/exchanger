@@ -1,6 +1,10 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/config"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/messaging"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/services"
@@ -38,7 +42,6 @@ func main() {
 	scheduler := services.NewEmailScheduler(producer)
 	scheduler.StartBackhroundTask(cfg.SchedulerInterval)
 
-	forever := make(chan bool)
 	consumer := messaging.NewRateEmailsConsumer(rateEmailsChannel, mailerService)
 	err = consumer.StartListening()
 	if err != nil {
@@ -46,5 +49,12 @@ func main() {
 	}
 
 	log.Info().Msg("Mialer service started")
-	<-forever
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	if err := rabbitMQConn.Close(); err != nil {
+		log.Error().Err(err).Msg("Cannot close RabbitMQ connection")
+	}
 }
