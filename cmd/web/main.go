@@ -16,6 +16,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/services/rate"
 	"github.com/fdemchenko/exchanger/migrations"
 	_ "github.com/lib/pq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -71,7 +72,13 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	createCustomersChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerRequestQueue)
+	rabbitMQConn, err := amqp.Dial(cfg.rabbitMQConnString)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	log.Info().Msg("Coonected to RabbitMQ successfully")
+
+	createCustomersChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, customers.CreateCustomerRequestQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -88,7 +95,7 @@ func main() {
 	)
 
 	checkCustomersCreationChannel, err := rabbitmq.OpenWithQueueName(
-		cfg.rabbitMQConnString,
+		rabbitMQConn,
 		customers.CreateCustomerResponseQueue,
 	)
 	if err != nil {
@@ -105,7 +112,7 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, mailer.RateEmailsQueue)
+	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, mailer.RateEmailsQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
@@ -141,19 +148,6 @@ func initConfig() config {
 		os.Getenv("EXCHANGER_RABBITMQ_CONN_STRING"),
 		"RabbitMQ connection string",
 	)
-
-	flag.Func("mailer-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
-		if s == "" {
-			cfg.mailerUpdateInterval = DefaultMailerInterval
-			return nil
-		}
-		duration, err := time.ParseDuration(s)
-		if err != nil {
-			return err
-		}
-		cfg.mailerUpdateInterval = duration
-		return nil
-	})
 	flag.Parse()
 	return cfg
 }

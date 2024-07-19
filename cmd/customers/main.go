@@ -11,6 +11,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	"github.com/fdemchenko/exchanger/internal/database"
 	"github.com/fdemchenko/exchanger/migrations"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -47,12 +48,18 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	requestsChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerRequestQueue)
+	rabbitMQConn, err := amqp.Dial(cfg.rabbitMQConnString)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	log.Info().Msg("Coonected to RabbitMQ successfully")
+
+	requestsChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, customers.CreateCustomerRequestQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 
-	responcesChannel, err := rabbitmq.OpenWithQueueName(cfg.rabbitMQConnString, customers.CreateCustomerResponseQueue)
+	responcesChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, customers.CreateCustomerResponseQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}

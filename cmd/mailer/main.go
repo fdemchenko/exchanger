@@ -6,6 +6,7 @@ import (
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/services"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -15,11 +16,17 @@ const (
 
 func main() {
 	cfg := config.LoadConfig()
-	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(cfg.RabbitMQConnString, mailer.RateEmailsQueue)
+	rabbitMQConn, err := amqp.Dial(cfg.RabbitMQConnString)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	emailsTriggersChannel, err := rabbitmq.OpenWithQueueName(cfg.RabbitMQConnString, mailer.TriggerEmailsSendingQueue)
+	log.Info().Msg("Coonected to RabbitMQ successfully")
+
+	rateEmailsChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, mailer.RateEmailsQueue)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	emailsTriggersChannel, err := rabbitmq.OpenWithQueueName(rabbitMQConn, mailer.TriggerEmailsSendingQueue)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
