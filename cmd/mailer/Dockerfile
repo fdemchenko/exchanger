@@ -24,4 +24,4 @@ WORKDIR /app
 COPY --from=build /app/mailer .
 
 # Set the entrypoint command
-ENTRYPOINT ["/app/mailer", "--scheduler-interval", "15s"]
+ENTRYPOINT ["/app/mailer"]
