@@ -9,7 +9,6 @@ import (
 type Config struct {
 	SMTP               SMTPConfig
 	RabbitMQConnString string
-	SchedulerInterval  time.Duration
 }
 
 type SMTPConfig struct {
@@ -37,18 +36,6 @@ func LoadConfig() Config {
 		DefaultMailerConnectionPoolSize,
 		"Smtp connection pool size",
 	)
-	flag.Func("scheduler-interval", "Email update interval (E.g. 24h, 1h30m)", func(s string) error {
-		if s == "" {
-			cfg.SchedulerInterval = DefaultSchedulerInterval
-			return nil
-		}
-		duration, err := time.ParseDuration(s)
-		if err != nil {
-			return err
-		}
-		cfg.SchedulerInterval = duration
-		return nil
-	})
 	flag.StringVar(&cfg.SMTP.Username, "smtp-username", os.Getenv("EXCHANGER_SMTP_USERNAME"), "Smtp username")
 	flag.StringVar(&cfg.SMTP.Password, "smtp-password", os.Getenv("EXCHANGER_SMTP_PASSWORD"), "Smtp password")
 	flag.StringVar(&cfg.SMTP.Sender, "smtp-sender", os.Getenv("EXCHANGER_SMTP_SENDER"), "Smtp sender")

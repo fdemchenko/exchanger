@@ -4,18 +4,22 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/config"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/messaging"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/services"
+	"github.com/fdemchenko/exchanger/internal/communication"
 	"github.com/fdemchenko/exchanger/internal/communication/mailer"
 	"github.com/fdemchenko/exchanger/internal/communication/rabbitmq"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/robfig/cron"
 	"github.com/rs/zerolog/log"
 )
 
 const (
 	DefaultMailerConnectionPoolSize = 3
+	EveryDayAt10AMCRON              = "0 0 10 * * *"
 )
 
 func main() {
@@ -39,8 +43,17 @@ func main() {
 	mailerService.StartWorkers(cfg.SMTP.ConnectionPoolSize)
 
 	producer := rabbitmq.NewGenericProducer(emailsTriggersChannel)
-	scheduler := services.NewEmailScheduler(producer)
-	scheduler.StartBackhroundTask(cfg.SchedulerInterval)
+	c := cron.New()
+	c.AddFunc(EveryDayAt10AMCRON, func() {
+		msg := communication.Message[struct{}]{
+			MessageHeader: communication.MessageHeader{Type: mailer.StartEmailSending, Timestamp: time.Now()},
+		}
+		err := producer.SendMessage(msg, mailer.TriggerEmailsSendingQueue)
+		if err != nil {
+			log.Error().Err(err).Send()
+		}
+	})
+	c.Start()
 
 	consumer := messaging.NewRateEmailsConsumer(rateEmailsChannel, mailerService)
 	err = consumer.StartListening()
@@ -57,4 +70,5 @@ func main() {
 	if err := rabbitMQConn.Close(); err != nil {
 		log.Error().Err(err).Msg("Cannot close RabbitMQ connection")
 	}
+	c.Stop()
 }
