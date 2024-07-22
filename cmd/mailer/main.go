@@ -44,7 +44,7 @@ func main() {
 
 	producer := rabbitmq.NewGenericProducer(emailsTriggersChannel)
 	c := cron.New()
-	c.AddFunc(EveryDayAt10AMCRON, func() {
+	err = c.AddFunc(EveryDayAt10AMCRON, func() {
 		msg := communication.Message[struct{}]{
 			MessageHeader: communication.MessageHeader{Type: mailer.StartEmailSending, Timestamp: time.Now()},
 		}
@@ -53,6 +53,9 @@ func main() {
 			log.Error().Err(err).Send()
 		}
 	})
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
 	c.Start()
 
 	consumer := messaging.NewRateEmailsConsumer(rateEmailsChannel, mailerService)
