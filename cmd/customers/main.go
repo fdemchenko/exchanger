@@ -49,6 +49,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+	log.Info().Msg("Migrations successfully applied")
 
 	rabbitMQConn, err := amqp.Dial(cfg.rabbitMQConnString)
 	if err != nil {
