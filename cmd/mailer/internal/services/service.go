@@ -5,6 +5,7 @@ import (
 	"math"
 	"text/template"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/config"
 	"github.com/fdemchenko/exchanger/web/templates"
 	"github.com/go-mail/mail/v2"
@@ -66,6 +67,7 @@ func (ms *MailerService) StartWorkers(connectionPoolSize int) {
 }
 
 func (ms *MailerService) SendEmail(to string) {
+	metrics.GetOrCreateCounter("total_emails_send").Inc()
 	message := mail.NewMessage()
 	message.SetHeader("From", ms.sender)
 	message.SetHeader("To", to)
