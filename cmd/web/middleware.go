@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/rs/zerolog/log"
 )
 
@@ -17,6 +18,14 @@ var secureHeaders = map[string]string{
 func (app *application) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Debug().Str("method", r.Method).Str("requestURI", r.RequestURI).Str("remote_addr", r.RemoteAddr).Send()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) RequestCounterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s := fmt.Sprintf(`requests_total{path=%q}`, r.URL.Path)
+		metrics.GetOrCreateCounter(s).Inc()
 		next.ServeHTTP(w, r)
 	})
 }
