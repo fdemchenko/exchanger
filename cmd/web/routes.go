@@ -10,6 +10,7 @@ import (
 	"github.com/fdemchenko/exchanger/internal/communication/customers"
 	"github.com/fdemchenko/exchanger/internal/repositories"
 	"github.com/fdemchenko/exchanger/internal/validator"
+	"github.com/justinas/alice"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,7 +22,8 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("POST /unsubscribe", app.unsubscribe)
 	mux.HandleFunc("GET /metrics", app.metrics)
 
-	return app.recoveryMiddleware(app.loggingMiddleware(app.secureHeadersMiddleware(app.RequestCounterMiddleware(mux))))
+	middlewares := alice.New(app.recoveryMiddleware, app.loggingMiddleware, app.secureHeadersMiddleware, app.RequestCounterMiddleware)
+	return middlewares.Then(mux)
 }
 
 func (app *application) getRate(w http.ResponseWriter, r *http.Request) {
