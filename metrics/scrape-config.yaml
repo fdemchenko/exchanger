@@ -1,0 +1,13 @@
+global:
+  # how frequent to scrape targets.
+  # 1s means app metrics will be scraped every 1s.
+  scrape_interval: 1s
+scrape_configs:
+    # job name will be added to labels for all scraped metrics
+    # and acts as a namespace - additional dimension which would
+    # help to distinguish metrics between multiple applications.
+  - job_name: 'exchanger'
+    static_configs:
+        # HTTP address of application.
+        # By default, handler '/metrics' will be called.
+      - targets: ['api:8080']

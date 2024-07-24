@@ -22,7 +22,12 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("POST /unsubscribe", app.unsubscribe)
 	mux.HandleFunc("GET /metrics", app.metrics)
 
-	middlewares := alice.New(app.recoveryMiddleware, app.loggingMiddleware, app.secureHeadersMiddleware, app.RequestCounterMiddleware)
+	middlewares := alice.New(
+		app.recoveryMiddleware,
+		app.loggingMiddleware,
+		app.secureHeadersMiddleware,
+		app.RequestCounterMiddleware,
+	)
 	return middlewares.Then(mux)
 }
 
