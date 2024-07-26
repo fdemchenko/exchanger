@@ -8,6 +8,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type StatusCodeRecorder struct {
+	StatusCode int
+	http.ResponseWriter
+}
+
+func (scr *StatusCodeRecorder) WriteHeader(status int) {
+	scr.StatusCode = status
+	scr.ResponseWriter.WriteHeader(status)
+}
+
 var secureHeaders = map[string]string{
 	"Cache-Control":           "no-store",
 	"Content-Security-Policy": "frame-ancestors 'none'",
@@ -24,9 +34,10 @@ func (app *application) loggingMiddleware(next http.Handler) http.Handler {
 
 func (app *application) RequestCounterMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s := fmt.Sprintf(`requests_total{path=%q}`, r.URL.Path)
+		recorder := &StatusCodeRecorder{ResponseWriter: w, StatusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		s := fmt.Sprintf(`requests_total{method="%s", path=%q, status="%d"}`, r.Method, r.URL.Path, recorder.StatusCode)
 		metrics.GetOrCreateCounter(s).Inc()
-		next.ServeHTTP(w, r)
 	})
 }
 
