@@ -1,11 +1,13 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/config"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/messaging"
 	"github.com/fdemchenko/exchanger/cmd/mailer/internal/services"
@@ -19,7 +21,7 @@ import (
 
 const (
 	DefaultMailerConnectionPoolSize = 3
-	EveryDayAt10AMCRON              = "0 0 10 * * *"
+	EveryDayAt10AMCRON              = "0 * * * * *"
 )
 
 func main() {
@@ -63,6 +65,17 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics.WritePrometheus(w, false)
+	})
+	go func() {
+		err := http.ListenAndServe(cfg.HTTPAddr, mux)
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+	}()
 
 	log.Info().Msg("Mialer service started")
 

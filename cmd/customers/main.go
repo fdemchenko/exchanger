@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/fdemchenko/exchanger/cmd/customers/internal/data"
 	"github.com/fdemchenko/exchanger/cmd/customers/internal/messaging"
 	"github.com/fdemchenko/exchanger/internal/communication/customers"
@@ -24,6 +26,7 @@ type config struct {
 		maxOpenConnections int
 	}
 	rabbitMQConnString string
+	addr               string
 }
 
 const DefaultMaxDBConnections = 10
@@ -32,6 +35,7 @@ func main() {
 	var cfg config
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("EXCHANGER_CUSTOMERS_DSN"), "Data source name")
 	flag.IntVar(&cfg.db.maxOpenConnections, "db-max-conn", DefaultMaxDBConnections, "Database max connection")
+	flag.StringVar(&cfg.addr, "http-addr", ":8080", "HTTP listening addr")
 	flag.StringVar(&cfg.rabbitMQConnString,
 		"rabbitmq-conn-string",
 		os.Getenv("EXCHANGER_RABBITMQ_CONN_STRING"),
@@ -77,6 +81,16 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
+		metrics.WritePrometheus(w, false)
+	})
+	go func() {
+		err := http.ListenAndServe(cfg.addr, mux)
+		if err != nil {
+			log.Fatal().Err(err).Send()
+		}
+	}()
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

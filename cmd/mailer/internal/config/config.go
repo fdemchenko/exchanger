@@ -9,6 +9,7 @@ import (
 type Config struct {
 	SMTP               SMTPConfig
 	RabbitMQConnString string
+	HTTPAddr           string
 }
 
 type SMTPConfig struct {
@@ -29,6 +30,7 @@ const (
 
 func LoadConfig() Config {
 	var cfg Config
+	flag.StringVar(&cfg.HTTPAddr, "http-addr", ":8080", "HTTP listening addr")
 	flag.StringVar(&cfg.SMTP.Host, "smtp-host", os.Getenv("EXCHANGER_SMTP_HOST"), "Smtp host")
 	flag.IntVar(&cfg.SMTP.Port, "smtp-port", DefaultSMTPPort, "Smtp port")
 	flag.IntVar(&cfg.SMTP.ConnectionPoolSize,
