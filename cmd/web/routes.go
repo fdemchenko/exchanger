@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -67,6 +68,8 @@ func (app *application) subscribe(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
+	s := fmt.Sprintf(`total_subscribers{success="%v"}`, err == nil)
+	metrics.GetOrCreateCounter(s).Inc()
 
 	msg := communication.Message[customers.CreateCustomerRequestPayload]{
 		MessageHeader: communication.MessageHeader{Type: customers.CreateCustomerRequest, Timestamp: time.Now()},
@@ -94,6 +97,8 @@ func (app *application) unsubscribe(w http.ResponseWriter, r *http.Request) {
 		}
 		app.serverError(w, err)
 	}
+	s := fmt.Sprintf(`total_unsubscribers{success="%v"}`, err == nil)
+	metrics.GetOrCreateCounter(s).Inc()
 }
 
 func (app *application) metrics(w http.ResponseWriter, _ *http.Request) {
