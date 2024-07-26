@@ -2,8 +2,10 @@ package messaging
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/fdemchenko/exchanger/cmd/customers/internal/data"
 	"github.com/fdemchenko/exchanger/internal/communication"
 	"github.com/fdemchenko/exchanger/internal/communication/customers"
@@ -78,6 +80,8 @@ func (ccc *customerCreationConsumer) handleDelivery(delivery amqp.Delivery) erro
 
 func (ccc *customerCreationConsumer) handleCustomerCreation(request customers.CreateCustomerRequestPayload) error {
 	id, err := ccc.customersRepo.Insert(request.Email, request.SubscriptionID)
+	s := fmt.Sprintf(`customers_created_total{success="%v"}`, err == nil)
+	metrics.GetOrCreateCounter(s).Inc()
 	var message any
 	if err != nil {
 		message = communication.Message[customers.CustomerCreationFailedPayload]{
