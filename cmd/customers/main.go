@@ -29,7 +29,10 @@ type config struct {
 	addr               string
 }
 
-const DefaultMaxDBConnections = 10
+const (
+	DefaultMaxDBConnections = 10
+	ReadHeaderTimeout       = 5 * time.Second
+)
 
 func main() {
 	var cfg config
@@ -85,8 +88,13 @@ func main() {
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics.WritePrometheus(w, false)
 	})
+	s := http.Server{
+		Addr:              cfg.addr,
+		Handler:           mux,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+	}
 	go func() {
-		err := http.ListenAndServe(cfg.addr, mux)
+		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}

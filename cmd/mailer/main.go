@@ -21,7 +21,8 @@ import (
 
 const (
 	DefaultMailerConnectionPoolSize = 3
-	EveryDayAt10AMCRON              = "0 * * * * *"
+	EveryDayAt10AMCRON              = "0 0 10 * * *"
+	ReadHeaderTimeout               = 5 * time.Second
 )
 
 func main() {
@@ -65,13 +66,17 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics.WritePrometheus(w, false)
 	})
+	s := http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           mux,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+	}
 	go func() {
-		err := http.ListenAndServe(cfg.HTTPAddr, mux)
+		err := s.ListenAndServe()
 		if err != nil {
 			log.Fatal().Err(err).Send()
 		}
