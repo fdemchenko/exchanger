@@ -4,8 +4,19 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/rs/zerolog/log"
 )
+
+type StatusCodeRecorder struct {
+	StatusCode int
+	http.ResponseWriter
+}
+
+func (scr *StatusCodeRecorder) WriteHeader(status int) {
+	scr.StatusCode = status
+	scr.ResponseWriter.WriteHeader(status)
+}
 
 var secureHeaders = map[string]string{
 	"Cache-Control":           "no-store",
@@ -16,8 +27,17 @@ var secureHeaders = map[string]string{
 
 func (app *application) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.Method, r.RequestURI, r.RemoteAddr)
+		log.Debug().Str("method", r.Method).Str("requestURI", r.RequestURI).Str("remote_addr", r.RemoteAddr).Send()
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) RequestCounterMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recorder := &StatusCodeRecorder{ResponseWriter: w, StatusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		s := fmt.Sprintf(`requests_total{method="%s", path=%q, status="%d"}`, r.Method, r.URL.Path, recorder.StatusCode)
+		metrics.GetOrCreateCounter(s).Inc()
 	})
 }
 

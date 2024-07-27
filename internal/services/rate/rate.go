@@ -79,6 +79,7 @@ func (crs *cachingRateService) GetRate(ctx context.Context, currencyCode string)
 			crs.cache.Set(strings.ToLower(currencyCode), rate, crs.updateInterval)
 			return rate, nil
 		}
+		log.Warn().Str("provider", fetcher.Name()).Err(err).Msg("Fallback to another provider")
 	}
 
 	return 0, err

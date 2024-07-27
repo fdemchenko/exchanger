@@ -30,7 +30,7 @@ func (app *application) serveHTTP() error {
 
 		quitSignal := <-quit
 
-		log.Debug().Str("signal", quitSignal.String()).Msg("app terminated")
+		log.Info().Str("signal", quitSignal.String()).Msg("app terminated")
 
 		ctx, cancel := context.WithTimeout(context.Background(), ServerShutdownTimeout)
 		defer cancel()
